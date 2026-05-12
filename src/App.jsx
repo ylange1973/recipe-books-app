@@ -1358,6 +1358,9 @@ export default function App() {
   const [fDiff,setFDiff]=useState("");
   const [fBook,setFBook]=useState("");
   const [toast,setToast]=useState(null);
+  const [showImport,setShowImport]=useState(false);
+  const [importJson,setImportJson]=useState("");
+  const [importStatus,setImportStatus]=useState("");
   const saveRef=useRef(null);
 
   // ── Firebase auth listener ───────────────────────────────────────────────
@@ -1390,6 +1393,26 @@ export default function App() {
 
   const handleLogin=u=>{ setUser(u); };
   const handleLogout=async()=>{ await signOut(auth); setView("list"); setSelBook(null); setSelRecipe(null); };
+
+  const handleImport=async()=>{
+    setImportStatus("running");
+    try {
+      const parsed = JSON.parse(importJson);
+      const books = parsed.books || [];
+      const recipes = parsed.recipes || [];
+      let ok=0, fail=0;
+      for (const book of books) {
+        try { await fbSaveBook(book); ok++; } catch { fail++; }
+      }
+      for (const recipe of recipes) {
+        try { await fbSaveRecipe(recipe); ok++; } catch { fail++; }
+      }
+      await loadData();
+      setImportStatus(fail===0 ? `done:${ok}` : `error:${ok} ok, ${fail} failed`);
+    } catch(e) {
+      setImportStatus("parseerror:" + e.message);
+    }
+  };
 
   const updateLang=async lang=>{
     const updated={...user,lang};
@@ -1457,6 +1480,7 @@ export default function App() {
               {LANGUAGES.map(l=><option key={l.code} value={l.code}>{l.nativeLabel}</option>)}
             </select>
             <div className="topbar-user">👤 {user.name}</div>
+            <button className="btn btn-g btn-sm" onClick={()=>setShowImport(true)}>📥 Import</button>
             <button className="btn btn-g btn-sm" onClick={handleLogout}>{t.signOut}</button>
           </div>
         </div>
