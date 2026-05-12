@@ -1622,6 +1622,33 @@ export default function App() {
         )}
 
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
+
+        {showImport&&(
+          <div className="backdrop" onClick={e=>e.target===e.currentTarget&&(setShowImport(false),setImportStatus(""),setImportJson(""))}>
+            <div className="modal" style={{maxWidth:500}}>
+              <div className="modal-hd">
+                <div className="modal-title">📥 Import Sandbox Data</div>
+                <button className="btn btn-ic btn-s btn-sm" onClick={()=>{setShowImport(false);setImportStatus("");setImportJson("");}}>×</button>
+              </div>
+              <div className="modal-body">
+                <div style={{fontSize:".85rem",color:THEME.brown,marginBottom:"1rem"}}>
+                  Open the <strong>export-sandbox-data</strong> artifact on your mobile, copy the JSON, then paste it below.
+                </div>
+                <textarea className="fi" style={{minHeight:180,fontSize:".78rem",fontFamily:"monospace"}}
+                  placeholder='Paste JSON here… {"books":[...],"recipes":[]}'
+                  value={importJson} onChange={e=>setImportJson(e.target.value)}/>
+                {importStatus==="running"&&<div style={{color:THEME.brown,fontSize:".85rem",margin:".5rem 0"}}>⏳ Importing…</div>}
+                {importStatus.startsWith("done")&&<div style={{color:"#1e8449",fontSize:".85rem",margin:".5rem 0"}}>🎉 {importStatus.split(":")[1]} items imported successfully!</div>}
+                {importStatus.startsWith("error")&&<div style={{color:THEME.rust,fontSize:".85rem",margin:".5rem 0"}}>⚠️ {importStatus.split(":")[1]}</div>}
+                {importStatus.startsWith("parseerror")&&<div style={{color:THEME.rust,fontSize:".85rem",margin:".5rem 0"}}>❌ Invalid JSON — {importStatus.split(":")[1]}</div>}
+              </div>
+              <div className="modal-ft">
+                <button className="btn btn-s" onClick={()=>{setShowImport(false);setImportStatus("");setImportJson("");}}>Cancel</button>
+                <button className="btn btn-p" onClick={handleImport} disabled={!importJson.trim()||importStatus==="running"}>Import</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
