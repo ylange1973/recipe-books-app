@@ -340,8 +340,9 @@ async function callAI(prompt, imageBase64=null, imageType=null, url=null) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, imageBase64, imageType, url })
   });
-  const data = await res.json();
+const data = await res.json();
   if (data.error) throw new Error("AI error: " + data.error);
+  console.log("[callAI raw response]", data.text?.slice(0,500));
   return data.text || "";
 }
 
@@ -672,9 +673,14 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
     if(r.steps?.length)setSteps(r.steps.map(s=>({id:uid(),text:typeof s==="string"?s:s.text||"",images:[]})));
   };
 
-  const handleExtractUrl=async()=>{
+const handleExtractUrl=async()=>{
     if(!srcUrl.trim())return; setAiSt("extracting"); setAiErr("");
-    try{ applyExtracted(await extractAndTranslate(srcUrl,"url",currentUser.lang||"en")); setAiSt("done"); }
+    try{
+      const result = await extractAndTranslate(srcUrl,"url",currentUser.lang||"en");
+      console.log("[URL extract result]", JSON.stringify(result));
+      applyExtracted(result);
+      setAiSt("done");
+    }
     catch(e){ console.error("[URL extract error]", e); setAiSt("error"); setAiErr(String(e?.message||e)); }
   };
   const handleExtractPaste=async()=>{
