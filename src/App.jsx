@@ -340,9 +340,8 @@ async function callAI(prompt, imageBase64=null, imageType=null, url=null) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, imageBase64, imageType, url })
   });
-const data = await res.json();
+  const data = await res.json();
   if (data.error) throw new Error("AI error: " + data.error);
-  console.log("[callAI raw response]", data.text?.slice(0,500));
   return data.text || "";
 }
 
@@ -376,7 +375,7 @@ async function extractAndTranslate(source, type, targetLang) {
   const langName = LANGUAGES.find(l=>l.code===targetLang)?.nativeLabel||"English";
   const shapeInstr = `Return ONLY a single valid JSON object, no markdown, no explanation. Translate ALL text fields into ${langName}. JSON shape: ${RECIPE_JSON_SHAPE}`;
 
-if (type === "url") {
+  if (type === "url") {
     const prompt = `${shapeInstr}\n\nExtract the recipe from the page content below.`;
     const raw = await callAI(prompt, null, null, source);
     return extractJSON(raw);
@@ -673,14 +672,9 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
     if(r.steps?.length)setSteps(r.steps.map(s=>({id:uid(),text:typeof s==="string"?s:s.text||"",images:[]})));
   };
 
-const handleExtractUrl=async()=>{
+  const handleExtractUrl=async()=>{
     if(!srcUrl.trim())return; setAiSt("extracting"); setAiErr("");
-    try{
-      const result = await extractAndTranslate(srcUrl,"url",currentUser.lang||"en");
-      console.log("[URL extract result]", JSON.stringify(result));
-      applyExtracted(result);
-      setAiSt("done");
-    }
+    try{ applyExtracted(await extractAndTranslate(srcUrl,"url",currentUser.lang||"en")); setAiSt("done"); }
     catch(e){ console.error("[URL extract error]", e); setAiSt("error"); setAiErr(String(e?.message||e)); }
   };
   const handleExtractPaste=async()=>{
@@ -1062,28 +1056,14 @@ function normalizeUnit(unit) {
   return UNIT_MAP[unit.toLowerCase().trim().replace(/\.$/,"")] || unit;
 }
 
-// Translated display labels for normalized units
-const UNIT_DISPLAY = {
-  en: { tbsp:"tbsp", tsp:"tsp", cup:"cup", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pinch", handful:"handful", slice:"slice", slices:"slices", pc:"pc", pcs:"pcs", clove:"clove", cloves:"cloves", can:"can", cans:"cans", pkg:"pkg", pkt:"pkt" },
-  he: { tbsp:"כף", tsp:"כפית", cup:"כוס", oz:"אונקיה", lb:"ליברה", g:"גרם", kg:"ק״ג", ml:"מ״ל", l:"ליטר", pinch:"צביטה", handful:"חופן", slice:"פרוסה", slices:"פרוסות", pc:"יחידה", pcs:"יחידות", clove:"שן", cloves:"שיני", can:"קופסה", cans:"קופסאות", pkg:"חבילה", pkt:"חבילה" },
-  fr: { tbsp:"c. à s.", tsp:"c. à c.", cup:"tasse", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pincée", handful:"poignée", slice:"tranche", slices:"tranches", pc:"pièce", pcs:"pièces", clove:"gousse", cloves:"gousses", can:"boîte", cans:"boîtes", pkg:"paquet", pkt:"sachet" },
-  es: { tbsp:"cda", tsp:"cdita", cup:"taza", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pizca", handful:"puñado", slice:"rebanada", slices:"rebanadas", pc:"pieza", pcs:"piezas", clove:"diente", cloves:"dientes", can:"lata", cans:"latas", pkg:"paquete", pkt:"sobre" },
-  it: { tbsp:"cucchiaio", tsp:"cucchiaino", cup:"tazza", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pizzico", handful:"manciata", slice:"fetta", slices:"fette", pc:"pezzo", pcs:"pezzi", clove:"spicchio", cloves:"spicchi", can:"lattina", cans:"lattine", pkg:"confezione", pkt:"bustina" },
-};
-
-function displayUnit(normalizedUnit, lang) {
-  if (!normalizedUnit) return "";
-  return UNIT_DISPLAY[lang]?.[normalizedUnit] || normalizedUnit;
-}
-
 // Handle ingredients where amount+unit may be combined in the amount field
 // e.g. {amount:"2 tablespoons", unit:""} → {qty:"2", unit:"tbsp"}
-function parseIngredient(ing, lang="en") {
+function parseIngredient(ing) {
   const rawAmt = (ing.amount||"").trim();
   const rawUnit = (ing.unit||"").trim();
 
   // If unit is already set, just normalize it
-  if (rawUnit) return { qty: rawAmt, unit: displayUnit(normalizeUnit(rawUnit), lang) };
+  if (rawUnit) return { qty: rawAmt, unit: normalizeUnit(rawUnit) };
 
   // Try to split "2 tablespoons", "1½ cups", "3 cloves" etc.
   const match = rawAmt.match(/^([\d\/\.\s½¼¾⅓⅔⅛]+)\s+(.+)$/);
@@ -1092,7 +1072,7 @@ function parseIngredient(ing, lang="en") {
     const normalized = normalizeUnit(possibleUnit);
     // Only treat it as a unit if we recognised it
     if (normalized !== possibleUnit || UNIT_MAP[possibleUnit.toLowerCase()]) {
-      return { qty: match[1].trim(), unit: displayUnit(normalized, lang) };
+      return { qty: match[1].trim(), unit: normalized };
     }
   }
   // No unit found — put everything in qty, unit blank
@@ -1101,33 +1081,27 @@ function parseIngredient(ing, lang="en") {
 
 
 // ── Recipe Detail ──────────────────────────────────────────────────────────
-function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers, books, t }) {
-  const canEdit=recipe.ownerId===currentUser.id||recipe.editPerms?.includes(currentUser.id);
+function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers, books, t, isGuest=false }) {
+  const canEdit=!isGuest&&(recipe.ownerId===currentUser.id||recipe.editPerms?.includes(currentUser.id));
   const owner=allUsers.find(u=>u.id===recipe.ownerId);
   const rBooks=books.filter(b=>recipe.bookIds?.includes(b.id));
   const headerImg=recipe.images?.find(i=>i.role==="header") || recipe.images?.[0];
   const inlineImgs=recipe.images?.filter(i=>i.role!=="header" && i!==headerImg) || [];
   const lang=currentUser.lang||"en";
-const needsTrans=lang!==(recipe.originalLang||"en");
+  const needsTrans=lang!==(recipe.originalLang||"en");
   const [display,setDisplay]=useState(recipe);
-  const [ts,setTs]=useState("pending");
+  const [ts,setTs]=useState(needsTrans?"pending":"none");
 
   useEffect(()=>{
     // Track open count in Firestore (fire and forget) — skip for guest
-    if(currentUser.email !== "guest@myrecipebooks.com"){
+    if(!isGuest){
       const updated={...recipe,meta:{...recipe.meta,timesOpened:(recipe.meta?.timesOpened||0)+1,lastOpened:now()}};
       fbSaveRecipe(updated).catch(()=>{});
     }
     if(!needsTrans){ setDisplay(recipe); setTs("none"); return; }
-    // Always reset to loading when lang or recipe changes
-    setTs("loading");
-    // Check cache — but validate it's actually in the right language
     const cache=tcLoad()||{}; const ck=`${recipe.id}__${lang}`;
-    if(cache[ck] && cache[ck].name && cache[ck].name!==recipe.name){
-      setDisplay({...recipe,...cache[ck]}); setTs("done"); return;
-    }
-    // Delete stale cache entry and re-translate
-    if(cache[ck]) { delete cache[ck]; tcSave(cache); }
+    if(cache[ck]){ setDisplay({...recipe,...cache[ck]}); setTs("done"); return; }
+    setTs("loading");
     translateRecipe(recipe,lang)
       .then(tr=>{ const merged={...recipe,...tr}; setDisplay(merged); setTs("done"); const c=tcLoad()||{}; c[ck]=tr; tcSave(c); })
       .catch(()=>{ setDisplay(recipe); setTs("error"); });
@@ -1169,7 +1143,7 @@ const needsTrans=lang!==(recipe.originalLang||"en");
           <ul className="ing-list">
             {display.ingredients.map((ing,i)=>(
               <li key={ing.id||i} className="ing-item">
-                {(() => { const {qty,unit} = parseIngredient(ing, currentUser?.lang||"en"); return (<>
+                {(() => { const {qty,unit} = parseIngredient(ing); return (<>
                   <span className="ing-qty">{qty}</span>
                   <span className="ing-unit">{unit}</span>
                   <span className="ing-name">{ing.name}</span>
@@ -1229,7 +1203,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
     if(lang===origLang){ setDisplay({name:book.name,description:book.description}); return; }
     // Check translation cache
     const cache=tcLoad()||{};
-    const ck=`${book.id}__${lang}__card`;
+    const ck=`${book.id}__${lang}`;
     if(cache[ck]){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
     // Translate card fields only
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
@@ -1259,7 +1233,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
 function RecipeCard({ recipe, onClick, users, userLang }) {
   const owner=users.find(u=>u.id===recipe.ownerId);
   const hdr=recipe.images?.find(i=>i.role==="header")||recipe.images?.[0];
-  const [display,setDisplay]=useState(null);
+  const [display,setDisplay]=useState({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty});
 
   useEffect(()=>{
     const lang=userLang||"en";
@@ -1267,7 +1241,7 @@ function RecipeCard({ recipe, onClick, users, userLang }) {
     if(lang===origLang){ setDisplay({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty}); return; }
     // Check translation cache first
     const cache=tcLoad()||{};
-    const ck=`${recipe.id}__${lang}__card`;
+    const ck=`${recipe.id}__${lang}`;
     if(cache[ck]){ setDisplay({name:cache[ck].name||recipe.name,foodType:cache[ck].foodType||recipe.foodType,difficulty:cache[ck].difficulty||recipe.difficulty}); return; }
     // Translate card fields only (lightweight)
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
@@ -1283,11 +1257,10 @@ function RecipeCard({ recipe, onClick, users, userLang }) {
         {hdr?<img src={hdr.src} alt=""/>:<span style={{fontSize:"3.5rem"}}>🍽</span>}
       </div>
       <div className="card-body">
-        <div className="card-name">{display?.name||recipe.name}</div>
+        <div className="card-name">{display.name}</div>
         <div className="card-rtags">
-          {(display?.foodType||recipe.foodType)&&<span className="tag tag-t">
-	  {display?.foodType||recipe.foodType}</span>}
-          {(display?.difficulty||recipe.difficulty)&&<span className="tag tag-d">{display?.difficulty||recipe.difficulty}</span>}
+          {display.foodType&&<span className="tag tag-t">{display.foodType}</span>}
+          {display.difficulty&&<span className="tag tag-d">{display.difficulty}</span>}
           {(recipe.customTags||[]).slice(0,2).map(tg=><span key={tg} className="tag tag-c">{tg}</span>)}
         </div>
         <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -1399,18 +1372,8 @@ export default function App() {
   };
   const saveRecipe=async recipe=>{
     const isNew=!recipes.find(r=>r.id===recipe.id);
-    const userLang=user.lang||"en";
-    const origLang=recipe.originalLang||"en";
-    let recipeToStore=recipe;
-
-    await fbSaveRecipe(recipeToStore);
-    setRecipes(isNew?[...recipes,recipeToStore]:recipes.map(r=>r.id===recipeToStore.id?recipeToStore:r));
-
-    // Clear translation cache so fresh translations pick up the changes
-    const cache=tcLoad()||{};
-    Object.keys(cache).forEach(k=>{ if(k.startsWith(recipe.id+"__")) delete cache[k]; });
-    tcSave(cache);
-
+    await fbSaveRecipe(recipe);
+    setRecipes(isNew?[...recipes,recipe]:recipes.map(r=>r.id===recipe.id?recipe:r));
     setShowRecipeForm(false); setEditRecipe(null);
     showToast(isNew?t.recipeAdded:t.recipeSaved);
   };
@@ -1458,7 +1421,7 @@ export default function App() {
               {LANGUAGES.map(l=><option key={l.code} value={l.code}>{l.nativeLabel}</option>)}
             </select>
             <div className="topbar-user">👤 {user.name}</div>
-            <button className="btn btn-g btn-sm" onClick={()=>setShowImport(true)}>📥 Import</button>
+            {!isGuest&&<button className="btn btn-g btn-sm" onClick={()=>setShowImport(true)}>📥 Import</button>}
             <button className="btn btn-g btn-sm" onClick={handleLogout}>{t.signOut}</button>
           </div>
         </div>
@@ -1478,7 +1441,7 @@ export default function App() {
               onBack={()=>{ setView(selBook?"book-detail":"list"); setSelRecipe(null); }}
               onEdit={()=>{ setEditRecipe(selRecipe); setShowRecipeForm(true); }}
               onDelete={()=>deleteRecipe(selRecipe.id)}
-              currentUser={user} allUsers={users} books={books} t={t}/>
+              currentUser={user} allUsers={users} books={books} t={t} isGuest={isGuest}/>
           )}
 
           {/* Book detail */}
@@ -1487,7 +1450,7 @@ export default function App() {
               {/* Action bar — full width, always visible */}
               <div style={{background:"#fff",borderBottom:`1px solid ${THEME.parchment}`,padding:".6rem 1rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <button className="back-btn" style={{margin:0}} onClick={()=>{ setView("list"); setSelBook(null); }}>{t.backToBooks}</button>
-                {selBook.ownerId===user.id&&(
+                {!isGuest&&selBook.ownerId===user.id&&(
                   <div className="act-row">
                     <button className="btn btn-s btn-sm" onClick={()=>{ setEditBook(selBook); setShowBookForm(true); }}>{t.edit}</button>
                     <button className="btn btn-d btn-sm" onClick={()=>deleteBook(selBook.id)}>{t.del}</button>
@@ -1506,7 +1469,7 @@ export default function App() {
               <div className="page">
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.2rem"}}>
                   <div className="pt" style={{fontSize:"1.3rem"}}>{t.recipesInBook}</div>
-                  <button className="btn btn-p btn-sm" onClick={()=>setShowRecipeForm(true)}>{t.addRecipe}</button>
+                  {!isGuest&&<button className="btn btn-p btn-sm" onClick={()=>setShowRecipeForm(true)}>{t.addRecipe}</button>}
                 </div>
                 {bookRecipes.length===0
                   ?<div className="empty"><div className="empty-icon">🍳</div><div className="empty-txt">{t.noRecipes}</div></div>
@@ -1522,16 +1485,16 @@ export default function App() {
                 <>
                   <div className="ph">
                     <div><div className="pt">{t.yourBooks}</div><div className="ps">{t.shelfSub}</div></div>
-                    <button className="btn btn-p" onClick={()=>{ setEditBook(null); setShowBookForm(true); }}>{t.newBook}</button>
+                    {!isGuest&&<button className="btn btn-p" onClick={()=>{ setEditBook(null); setShowBookForm(true); }}>{t.newBook}</button>}
                   </div>
                   {books.length===0
                     ?<div className="empty"><div className="empty-icon">📚</div><div className="empty-txt">{t.noBooks}</div></div>
                     :<div className="grid">
                       {books.map(b=><BookCard key={b.id} book={b} count={recipes.filter(r=>r.bookIds?.includes(b.id)).length} onClick={()=>openBook(b)} users={users} userLang={user?.lang||"en"}/>)}
-                      <div className="add-card" onClick={()=>setShowBookForm(true)}>
+                      {!isGuest&&<div className="add-card" onClick={()=>setShowBookForm(true)}>
                         <div style={{fontSize:"2rem"}}>+</div>
                         <div style={{fontSize:".88rem",fontWeight:500}}>{t.newBook}</div>
-                      </div>
+                      </div>}
                     </div>}
                 </>
               )}
@@ -1539,7 +1502,7 @@ export default function App() {
                 <>
                   <div className="ph">
                     <div><div className="pt">{t.allRecipes}</div><div className="ps">{recipes.length} {recipes.length===1?t.recipeWord:t.recipesWord}</div></div>
-                    <button className="btn btn-p" onClick={()=>{ setEditRecipe(null); setShowRecipeForm(true); }}>{t.addRecipe}</button>
+                    {!isGuest&&<button className="btn btn-p" onClick={()=>{ setEditRecipe(null); setShowRecipeForm(true); }}>{t.addRecipe}</button>}
                   </div>
                   <div className="search-bar">
                     <span>🔍</span>
@@ -1564,7 +1527,7 @@ export default function App() {
         </div>
 
         {/* Book modal */}
-        {showBookForm&&(
+        {showBookForm&&!isGuest&&(
           <div className="backdrop" onClick={e=>e.target===e.currentTarget&&(setShowBookForm(false),setEditBook(null))}>
             <div className="modal">
               <div className="modal-hd">
@@ -1579,7 +1542,7 @@ export default function App() {
         )}
 
         {/* Recipe modal */}
-        {showRecipeForm&&(
+        {showRecipeForm&&!isGuest&&(
           <div className="backdrop" onClick={e=>e.target===e.currentTarget&&(setShowRecipeForm(false),setEditRecipe(null))}>
             <div className="modal" style={{maxWidth:760}}>
               <div className="modal-hd">
