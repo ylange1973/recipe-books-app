@@ -1203,7 +1203,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
     if(lang===origLang){ setDisplay({name:book.name,description:book.description}); return; }
     // Check translation cache
     const cache=tcLoad()||{};
-    const ck=`${book.id}__${lang}`;
+    const ck=`${book.id}__${lang}__card`;
     if(cache[ck]){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
     // Translate card fields only
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
