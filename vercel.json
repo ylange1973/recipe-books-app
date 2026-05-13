@@ -1,7 +1,5 @@
 {
-  "functions": {
-    "api/*.mjs": {
-      "runtime": "@vercel/node"
-    }
-  }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ]
 }
