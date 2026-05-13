@@ -1062,14 +1062,28 @@ function normalizeUnit(unit) {
   return UNIT_MAP[unit.toLowerCase().trim().replace(/\.$/,"")] || unit;
 }
 
+// Translated display labels for normalized units
+const UNIT_DISPLAY = {
+  en: { tbsp:"tbsp", tsp:"tsp", cup:"cup", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pinch", handful:"handful", slice:"slice", slices:"slices", pc:"pc", pcs:"pcs", clove:"clove", cloves:"cloves", can:"can", cans:"cans", pkg:"pkg", pkt:"pkt" },
+  he: { tbsp:"כף", tsp:"כפית", cup:"כוס", oz:"אונקיה", lb:"ליברה", g:"גרם", kg:"ק״ג", ml:"מ״ל", l:"ליטר", pinch:"צביטה", handful:"חופן", slice:"פרוסה", slices:"פרוסות", pc:"יחידה", pcs:"יחידות", clove:"שן", cloves:"שיני", can:"קופסה", cans:"קופסאות", pkg:"חבילה", pkt:"חבילה" },
+  fr: { tbsp:"c. à s.", tsp:"c. à c.", cup:"tasse", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pincée", handful:"poignée", slice:"tranche", slices:"tranches", pc:"pièce", pcs:"pièces", clove:"gousse", cloves:"gousses", can:"boîte", cans:"boîtes", pkg:"paquet", pkt:"sachet" },
+  es: { tbsp:"cda", tsp:"cdita", cup:"taza", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pizca", handful:"puñado", slice:"rebanada", slices:"rebanadas", pc:"pieza", pcs:"piezas", clove:"diente", cloves:"dientes", can:"lata", cans:"latas", pkg:"paquete", pkt:"sobre" },
+  it: { tbsp:"cucchiaio", tsp:"cucchiaino", cup:"tazza", oz:"oz", lb:"lb", g:"g", kg:"kg", ml:"ml", l:"l", pinch:"pizzico", handful:"manciata", slice:"fetta", slices:"fette", pc:"pezzo", pcs:"pezzi", clove:"spicchio", cloves:"spicchi", can:"lattina", cans:"lattine", pkg:"confezione", pkt:"bustina" },
+};
+
+function displayUnit(normalizedUnit, lang) {
+  if (!normalizedUnit) return "";
+  return UNIT_DISPLAY[lang]?.[normalizedUnit] || normalizedUnit;
+}
+
 // Handle ingredients where amount+unit may be combined in the amount field
 // e.g. {amount:"2 tablespoons", unit:""} → {qty:"2", unit:"tbsp"}
-function parseIngredient(ing) {
+function parseIngredient(ing, lang="en") {
   const rawAmt = (ing.amount||"").trim();
   const rawUnit = (ing.unit||"").trim();
 
   // If unit is already set, just normalize it
-  if (rawUnit) return { qty: rawAmt, unit: normalizeUnit(rawUnit) };
+  if (rawUnit) return { qty: rawAmt, unit: displayUnit(normalizeUnit(rawUnit), lang) };
 
   // Try to split "2 tablespoons", "1½ cups", "3 cloves" etc.
   const match = rawAmt.match(/^([\d\/\.\s½¼¾⅓⅔⅛]+)\s+(.+)$/);
@@ -1078,7 +1092,7 @@ function parseIngredient(ing) {
     const normalized = normalizeUnit(possibleUnit);
     // Only treat it as a unit if we recognised it
     if (normalized !== possibleUnit || UNIT_MAP[possibleUnit.toLowerCase()]) {
-      return { qty: match[1].trim(), unit: normalized };
+      return { qty: match[1].trim(), unit: displayUnit(normalized, lang) };
     }
   }
   // No unit found — put everything in qty, unit blank
@@ -1147,7 +1161,7 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
           <ul className="ing-list">
             {display.ingredients.map((ing,i)=>(
               <li key={ing.id||i} className="ing-item">
-                {(() => { const {qty,unit} = parseIngredient(ing); return (<>
+                {(() => { const {qty,unit} = parseIngredient(ing, currentUser?.lang||"en"); return (<>
                   <span className="ing-qty">{qty}</span>
                   <span className="ing-unit">{unit}</span>
                   <span className="ing-name">{ing.name}</span>
