@@ -1129,8 +1129,14 @@ const needsTrans=lang!==(recipe.originalLang||"en");
     // Delete stale cache entry and re-translate
     if(cache[ck]) { delete cache[ck]; tcSave(cache); }
     translateRecipe(recipe,lang)
-      .then(tr=>{ const merged={...recipe,...tr}; setDisplay(merged); setTs("done"); const c=tcLoad()||{}; c[ck]=tr; tcSave(c); })
-      .catch(()=>{ setDisplay(recipe); setTs("error"); });
+      .then(tr=>{
+        console.log("[translate] result:", JSON.stringify(tr).slice(0,300));
+        const merged={...recipe,...tr};
+        console.log("[translate] merged name:", merged.name);
+        setDisplay(merged); setTs("done");
+        const c=tcLoad()||{}; c[ck]=tr; tcSave(c);
+      })
+      .catch(e=>{ console.error("[translate] error:", e); setDisplay(recipe); setTs("error"); });
   },[recipe.id,lang]);
 
   return (
