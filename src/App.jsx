@@ -1331,6 +1331,7 @@ export default function App() {
   const showToast=msg=>setToast(msg);
 
   const handleLogin=u=>{ setUser(u); };
+  const isGuest = user?.email === "guest@myrecipebooks.com";
   const handleLogout=async()=>{ await signOut(auth); setView("list"); setSelBook(null); setSelRecipe(null); };
 
   const handleImport=async()=>{
