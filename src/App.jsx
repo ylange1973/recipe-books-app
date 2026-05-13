@@ -1349,9 +1349,12 @@ export default function App() {
     const isNew=!books.find(b=>b.id===book.id);
     await fbSaveBook(book);
     setBooks(isNew?[...books,book]:books.map(b=>b.id===book.id?book:b));
+    // Update selBook immediately if we're editing the currently open book
+    if(selBook?.id===book.id) setSelBook(book);
     setShowBookForm(false); setEditBook(null);
     showToast(isNew?t.bookCreated:t.bookUpdated);
   };
+
   const deleteBook=async id=>{
     if(!confirm(t.delBookConfirm))return;
     await fbDeleteBook(id);
