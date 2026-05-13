@@ -8,42 +8,35 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
   }
 
-  const { prompt, imageBase64, imageType } = req.body;
+  const { prompt, imageBase64, imageType, url } = req.body;
+
+  console.log("[ai.js] url:", url ? url.slice(0,80) : "none");
+  console.log("[ai.js] prompt length:", prompt?.length);
 
   try {
-    const content = [];
-    if (imageBase64) {
-      content.push({
-        type: "image",
-        source: { type: "base64", media_type: imageType || "image/jpeg", data: imageBase64 }
-      });
-    }
-    content.push({ type: "text", text: prompt });
+    let finalPrompt = prompt;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 2048,
-        messages: [{ role: "user", content }]
-      })
-    });
+    if (url) {
+      try {
+        console.log("[ai.js] fetching URL...");
+        const pageRes = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          },
+          signal: AbortSignal.timeout(10000)
+        });
 
-    const raw = await response.text();
-    let data;
-    try { data = JSON.parse(raw); }
-    catch { return res.status(500).json({ error: `HTTP ${response.status}: ${raw.slice(0,300)}` }); }
+        console.log("[ai.js] page status:", pageRes.status);
 
-    if (data.error) return res.status(500).json({ error: data.error.message || JSON.stringify(data.error) });
-    const text = data.content?.map(b => b.text || "").join("") || "";
-    return res.status(200).json({ text });
+        if (!pageRes.ok) {
+          return res.status(500).json({ error: `Could not fetch URL (HTTP ${pageRes.status}). Try the Paste Text option instead.` });
+        }
 
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-};
+        const html = await pageRes.text();
+        console.log("[ai.js] html length:", html.length);
+
+        const text = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<!--[\s\S]*?-->/g, "")
