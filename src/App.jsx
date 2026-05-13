@@ -1121,7 +1121,6 @@ const needsTrans=lang!==(recipe.originalLang||"en");
     if(!needsTrans){ setDisplay(recipe); setTs("none"); return; }
     // Always reset to loading when lang or recipe changes
     setTs("loading");
-    setDisplay(recipe);
     // Check cache — but validate it's actually in the right language
     const cache=tcLoad()||{}; const ck=`${recipe.id}__${lang}`;
     if(cache[ck] && cache[ck].name && cache[ck].name!==recipe.name){
