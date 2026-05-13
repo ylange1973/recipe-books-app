@@ -334,11 +334,11 @@ function compressImage(dataUrl, maxPx=800, quality=0.72) {
 
 // ── AI helpers ─────────────────────────────────────────────────────────────
 // ── Gemini proxy call (via Vercel serverless function) ─────────────────────
-async function callAI(prompt, imageBase64=null, imageType=null) {
+async function callAI(prompt, imageBase64=null, imageType=null, url=null) {
   const res = await fetch("/api/ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, imageBase64, imageType })
+    body: JSON.stringify({ prompt, imageBase64, imageType, url })
   });
   const data = await res.json();
   if (data.error) throw new Error("AI error: " + data.error);
@@ -375,9 +375,9 @@ async function extractAndTranslate(source, type, targetLang) {
   const langName = LANGUAGES.find(l=>l.code===targetLang)?.nativeLabel||"English";
   const shapeInstr = `Return ONLY a single valid JSON object, no markdown, no explanation. Translate ALL text fields into ${langName}. JSON shape: ${RECIPE_JSON_SHAPE}`;
 
-  if (type === "url") {
-    const prompt = `${shapeInstr}\n\nFetch and extract the recipe from this URL: ${source}`;
-    const raw = await callAI(prompt);
+if (type === "url") {
+    const prompt = `${shapeInstr}\n\nExtract the recipe from the page content below.`;
+    const raw = await callAI(prompt, null, null, source);
     return extractJSON(raw);
   }
 
