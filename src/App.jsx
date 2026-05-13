@@ -1235,7 +1235,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
     if(lang===origLang){ setDisplay({name:book.name,description:book.description}); return; }
     // Check translation cache
     const cache=tcLoad()||{};
-    const ck=`${book.id}__${lang}`;
+    const ck=`${book.id}__${lang}__card`;
     if(cache[ck]){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
     // Translate card fields only
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
@@ -1273,7 +1273,7 @@ function RecipeCard({ recipe, onClick, users, userLang }) {
     if(lang===origLang){ setDisplay({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty}); return; }
     // Check translation cache first
     const cache=tcLoad()||{};
-    const ck=`${recipe.id}__${lang}`;
+    const ck=`${recipe.id}__${lang}__card`;
     if(cache[ck]){ setDisplay({name:cache[ck].name||recipe.name,foodType:cache[ck].foodType||recipe.foodType,difficulty:cache[ck].difficulty||recipe.difficulty}); return; }
     // Translate card fields only (lightweight)
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
