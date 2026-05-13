@@ -1376,8 +1376,40 @@ export default function App() {
   };
   const saveRecipe=async recipe=>{
     const isNew=!recipes.find(r=>r.id===recipe.id);
-    await fbSaveRecipe(recipe);
-    setRecipes(isNew?[...recipes,recipe]:recipes.map(r=>r.id===recipe.id?recipe:r));
+    const userLang=user.lang||"en";
+    const origLang=recipe.originalLang||"en";
+    let recipeToStore=recipe;
+
+    // If the user edited in a different language than the original,
+    // translate back to the original language before storing
+    if(!isNew && userLang!==origLang){
+      showToast("Translating back to original language…");
+      try {
+        const backTranslated=await translateRecipe(recipe, origLang);
+        recipeToStore={
+          ...recipe,
+          name:backTranslated.name||recipe.name,
+          description:backTranslated.description||recipe.description,
+          ingredients:backTranslated.ingredients||recipe.ingredients,
+          steps:backTranslated.steps||recipe.steps,
+          notes:backTranslated.notes||recipe.notes,
+          foodType:backTranslated.foodType||recipe.foodType,
+          difficulty:backTranslated.difficulty||recipe.difficulty,
+        };
+      } catch(e){
+        console.error("Back-translation failed:", e);
+        // Save as-is if translation fails
+      }
+    }
+
+    await fbSaveRecipe(recipeToStore);
+    setRecipes(isNew?[...recipes,recipeToStore]:recipes.map(r=>r.id===recipeToStore.id?recipeToStore:r));
+
+    // Clear translation cache so fresh translations pick up the changes
+    const cache=tcLoad()||{};
+    Object.keys(cache).forEach(k=>{ if(k.startsWith(recipe.id+"__")) delete cache[k]; });
+    tcSave(cache);
+
     setShowRecipeForm(false); setEditRecipe(null);
     showToast(isNew?t.recipeAdded:t.recipeSaved);
   };
