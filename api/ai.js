@@ -8,8 +8,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
   }
 
+  const { prompt, imageBase64, imageType, listModels } = req.body;
+
+  if (listModels) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const d = await r.json();
+    const names = (d.models||[]).filter(m=>m.supportedGenerationMethods?.includes("generateContent")).map(m=>m.name);
+    return res.status(200).json({ models: names });
+  }
+
   try {
-    const { prompt, imageBase64, imageType } = req.body;
     const parts = [];
     if (imageBase64) {
       parts.push({ inlineData: { mimeType: imageType || "image/jpeg", data: imageBase64 } });
@@ -17,7 +25,7 @@ export default async function handler(req, res) {
     parts.push({ text: prompt });
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
