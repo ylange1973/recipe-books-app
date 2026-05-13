@@ -1388,10 +1388,15 @@ export default function App() {
     setView("list"); setSelRecipe(null); showToast(t.recipeDeleted);
   };
   const openBook=async book=>{
-    const updated={...book,meta:{...book.meta,timesOpened:(book.meta?.timesOpened||0)+1,lastOpened:now()}};
-    await fbSaveBook(updated);
-    setBooks(books.map(b=>b.id===updated.id?updated:b));
-    setSelBook(updated); setView("book-detail");
+    if(!isGuest){
+      const updated={...book,meta:{...book.meta,timesOpened:(book.meta?.timesOpened||0)+1,lastOpened:now()}};
+      await fbSaveBook(updated);
+      setBooks(books.map(b=>b.id===updated.id?updated:b));
+      setSelBook(updated);
+    } else {
+      setSelBook(book);
+    }
+    setView("book-detail");
   };
   const openRecipe=r=>{ setSelRecipe(r); setView("recipe-detail"); };
 
