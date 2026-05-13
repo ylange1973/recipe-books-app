@@ -1237,7 +1237,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
 function RecipeCard({ recipe, onClick, users, userLang }) {
   const owner=users.find(u=>u.id===recipe.ownerId);
   const hdr=recipe.images?.find(i=>i.role==="header")||recipe.images?.[0];
-  const [display,setDisplay]=useState({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty});
+  const [display,setDisplay]=useState(null);
 
   useEffect(()=>{
     const lang=userLang||"en";
@@ -1261,10 +1261,11 @@ function RecipeCard({ recipe, onClick, users, userLang }) {
         {hdr?<img src={hdr.src} alt=""/>:<span style={{fontSize:"3.5rem"}}>🍽</span>}
       </div>
       <div className="card-body">
-        <div className="card-name">{display.name}</div>
+        <div className="card-name">{display?.name||recipe.name}</div>
         <div className="card-rtags">
-          {display.foodType&&<span className="tag tag-t">{display.foodType}</span>}
-          {display.difficulty&&<span className="tag tag-d">{display.difficulty}</span>}
+          {(display?.foodType||recipe.foodType)&&<span className="tag tag-t">
+	  {display?.foodType||recipe.foodType}</span>}
+          {(display?.difficulty||recipe.difficulty)&&<span className="tag tag-d">{display?.difficulty||recipe.difficulty}</span>}
           {(recipe.customTags||[]).slice(0,2).map(tg=><span key={tg} className="tag tag-c">{tg}</span>)}
         </div>
         <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -1379,28 +1380,6 @@ export default function App() {
     const userLang=user.lang||"en";
     const origLang=recipe.originalLang||"en";
     let recipeToStore=recipe;
-
-    // If the user edited in a different language than the original,
-    // translate back to the original language before storing
-    if(!isNew && userLang!==origLang){
-      showToast("Translating back to original language…");
-      try {
-        const backTranslated=await translateRecipe(recipe, origLang);
-        recipeToStore={
-          ...recipe,
-          name:backTranslated.name||recipe.name,
-          description:backTranslated.description||recipe.description,
-          ingredients:backTranslated.ingredients||recipe.ingredients,
-          steps:backTranslated.steps||recipe.steps,
-          notes:backTranslated.notes||recipe.notes,
-          foodType:backTranslated.foodType||recipe.foodType,
-          difficulty:backTranslated.difficulty||recipe.difficulty,
-        };
-      } catch(e){
-        console.error("Back-translation failed:", e);
-        // Save as-is if translation fails
-      }
-    }
 
     await fbSaveRecipe(recipeToStore);
     setRecipes(isNew?[...recipes,recipeToStore]:recipes.map(r=>r.id===recipeToStore.id?recipeToStore:r));
