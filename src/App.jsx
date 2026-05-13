@@ -1114,7 +1114,7 @@ const needsTrans=lang!==(recipe.originalLang||"en");
 
   useEffect(()=>{
     // Track open count in Firestore (fire and forget) — skip for guest
-    if(!isGuest){
+    if(currentUser.email !== "guest@myrecipebooks.com"){
       const updated={...recipe,meta:{...recipe.meta,timesOpened:(recipe.meta?.timesOpened||0)+1,lastOpened:now()}};
       fbSaveRecipe(updated).catch(()=>{});
     }
