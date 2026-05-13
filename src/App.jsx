@@ -619,12 +619,6 @@ function ImageInput({ images=[], onChange, maxImages=10, label="" }) {
         <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={handleFiles}/>
       </div>
       {uploading&&<div style={{fontSize:".8rem",color:THEME.brown,marginBottom:".4rem"}}>⏳ Processing image…</div>}
-      <div style={{display:"flex",gap:".4rem",marginBottom:".4rem"}}>
-        <input className="fi" style={{fontSize:".85rem",padding:".4rem .6rem"}} placeholder="Or paste image URL…"
-          value={urlInp} onChange={e=>setUrlInp(e.target.value)}
-          onKeyDown={e=>{ if(e.key==="Enter"&&urlInp.trim()){ addImg(urlInp.trim(),images.length===0?"header":"inline"); setUrlInp(""); } }}/>
-        <button type="button" className="btn btn-s btn-sm" onClick={()=>{ if(urlInp.trim()){ addImg(urlInp.trim(),images.length===0?"header":"inline"); setUrlInp(""); } }}>+</button>
-      </div>
       {images.length>0&&(
         <div className="img-previews">
           {images.map(img=>(
@@ -878,12 +872,6 @@ function BookImagePicker({ cover, setCover, url, setUrl, t }) {
           <button onClick={()=>setCover(null)} style={{position:"absolute",top:3,right:3,background:"rgba(44,26,14,.7)",color:"#fff",border:"none",borderRadius:"50%",width:20,height:20,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
         </div>
       )}
-      <div style={{fontSize:".72rem",color:THEME.tan,marginBottom:".3rem",fontStyle:"italic"}}>Or paste a URL:</div>
-      <div style={{display:"flex",gap:".4rem"}}>
-        <input className="fi" style={{fontSize:".85rem",padding:".4rem .6rem"}} placeholder={t.pasteUrl} value={url} onChange={e=>setUrl(e.target.value)}
-          onKeyDown={e=>{ if(e.key==="Enter"&&url.trim()){setCover(url.trim());setUrl("");} }}/>
-        <button type="button" className="btn btn-s btn-sm" onClick={()=>{if(url.trim()){setCover(url.trim());setUrl("");}}}>{t.add}</button>
-      </div>
     </div>
   );
 }
@@ -1203,7 +1191,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
     if(lang===origLang){ setDisplay({name:book.name,description:book.description}); return; }
     // Check translation cache
     const cache=tcLoad()||{};
-    const ck=`${book.id}__${lang}__card`;
+    const ck=`${selBook.id}__${lang}__card`;
     if(cache[ck]){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
     // Translate card fields only
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
