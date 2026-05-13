@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -33,3 +33,17 @@ export default async function handler(req, res) {
         messages: [{ role: "user", content }]
       })
     });
+
+    const raw = await response.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch { return res.status(500).json({ error: `HTTP ${response.status}: ${raw.slice(0,300)}` }); }
+
+    if (data.error) return res.status(500).json({ error: data.error.message || JSON.stringify(data.error) });
+    const text = data.content?.map(b => b.text || "").join("") || "";
+    return res.status(200).json({ text });
+
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+};
