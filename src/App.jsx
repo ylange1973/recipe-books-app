@@ -335,7 +335,7 @@ function compressImage(dataUrl, maxPx=800, quality=0.72) {
 // ── AI helpers ─────────────────────────────────────────────────────────────
 // ── Gemini proxy call (via Vercel serverless function) ─────────────────────
 async function callAI(prompt, imageBase64=null, imageType=null) {
-  const res = await fetch("/api/ai.cjs", {
+  const res = await fetch("/api/ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, imageBase64, imageType })
