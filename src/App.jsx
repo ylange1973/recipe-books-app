@@ -333,15 +333,16 @@ function compressImage(dataUrl, maxPx=800, quality=0.72) {
 }
 
 // ── AI helpers ─────────────────────────────────────────────────────────────
-async function callAI(messages, system="", max_tokens=2000) {
-  const body = { model:"claude-sonnet-4-20250514", max_tokens, messages };
-  if (system) body.system = system;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
+// ── Gemini proxy call (via Vercel serverless function) ─────────────────────
+async function callAI(prompt, imageBase64=null, imageType=null) {
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, imageBase64, imageType })
   });
   const data = await res.json();
-  if (data.error) throw new Error("API error: " + data.error.message);
-  return data.content?.map(i=>i.text||"").join("") || "";
+  if (data.error) throw new Error("AI error: " + data.error);
+  return data.text || "";
 }
 
 function extractJSON(raw) {
@@ -356,109 +357,43 @@ function extractJSON(raw) {
   throw new Error("No valid JSON in response: " + raw.slice(0,300));
 }
 
-// Use Claude web_search tool to fetch + extract recipe from a URL.
-// The artifact sandbox blocks outbound fetches, but the Anthropic API allows web_search.
-async function extractFromUrl(url, langName) {
-  const system = [
-    "You are a recipe extraction assistant.",
-    "The user will give you a URL. Use your web_search tool to search for and read that page, then extract the recipe.",
-    "After reading the page, return ONLY a single valid JSON object with no markdown fences and no explanation.",
-    `Translate ALL text fields into ${langName}.`,
-    `JSON shape exactly: { "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string }`,
-  ].join(" ");
-
-  const tools = [{ type: "web_search_20250305", name: "web_search" }];
-  let messages = [{ role: "user", content: `Fetch this URL and extract the recipe as JSON translated into ${langName}: ${url}` }];
-
-  // Agentic loop: keep calling until we get a final text response (stop_reason === "end_turn")
-  for (let i = 0; i < 5; i++) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system, tools, messages }),
-    });
-    const data = await res.json();
-    if (data.error) throw new Error("API error: " + data.error.message);
-
-    // Append assistant response to messages
-    messages.push({ role: "assistant", content: data.content });
-
-    console.log(`[extract] turn ${i} stop_reason=${data.stop_reason}`, JSON.stringify(data.content).slice(0,400));
-
-    if (data.stop_reason === "end_turn") {
-      const text = data.content.map(b => b.text || "").join("");
-      console.log("[extract] final text:", text.slice(0,500));
-      return extractJSON(text);
-    }
-
-    if (data.stop_reason === "tool_use") {
-      // The web_search tool is server-side — Claude runs it automatically.
-      // We just need to pass back an empty tool_result to continue the loop.
-      const toolResults = data.content
-        .filter(b => b.type === "tool_use")
-        .map(b => ({
-          type: "tool_result",
-          tool_use_id: b.id,
-          content: "Search executed by server.",
-        }));
-      console.log("[extract] tool_results being sent:", JSON.stringify(toolResults));
-      messages.push({ role: "user", content: toolResults });
-      continue;
-    }
-
-    // Any text in a non-end_turn response is worth trying
-    const partialText = (data.content || []).map(b => b.text || "").join("");
-    if (partialText.includes("{")) {
-      console.log("[extract] trying partial text:", partialText.slice(0,300));
-      return extractJSON(partialText);
-    }
-
-    throw new Error(`Unexpected stop_reason="${data.stop_reason}" content=${JSON.stringify(data.content).slice(0,200)}`);
-  }
-
-  throw new Error("Too many tool call iterations");
-}
+const RECIPE_JSON_SHAPE = `{ "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string }`;
 
 async function extractFromPastedText(text, langName) {
-  const system = [
+  const prompt = [
     "You are a recipe extraction assistant.",
-    "The user will paste raw recipe text. Extract the recipe and return ONLY a single valid JSON object, no markdown, no explanation.",
+    "Extract the recipe from the text below and return ONLY a single valid JSON object, no markdown, no explanation.",
     `Translate ALL text fields into ${langName}.`,
-    `JSON shape: { "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string }`,
+    `JSON shape: ${RECIPE_JSON_SHAPE}`,
+    "\n\nRecipe text:\n" + text.slice(0, 8000)
   ].join(" ");
-  const raw = await callAI([{ role:"user", content:`Extract and translate this recipe into ${langName}:\n\n${text.slice(0,8000)}` }], system, 2000);
+  const raw = await callAI(prompt);
   return extractJSON(raw);
 }
 
 async function extractAndTranslate(source, type, targetLang) {
   const langName = LANGUAGES.find(l=>l.code===targetLang)?.nativeLabel||"English";
+  const shapeInstr = `Return ONLY a single valid JSON object, no markdown, no explanation. Translate ALL text fields into ${langName}. JSON shape: ${RECIPE_JSON_SHAPE}`;
 
   if (type === "url") {
-    return extractFromUrl(source, langName);
+    const prompt = `${shapeInstr}\n\nFetch and extract the recipe from this URL: ${source}`;
+    const raw = await callAI(prompt);
+    return extractJSON(raw);
   }
 
-  // Image path: send base64 directly to Claude
-  const system = [
-    "You are a recipe extraction assistant.",
-    "Return ONLY a single valid JSON object, no markdown, no explanation.",
-    `Translate ALL text fields into ${langName}.`,
-    `JSON shape: { "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string }`,
-  ].join(" ");
-
-  const content = [
-    { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:source.split(",")[1] } },
-    { type:"text",  text:`Extract the recipe from this image and return JSON translated into ${langName}.` }
-  ];
-
-  const raw = await callAI([{role:"user",content}], system, 2000);
+  // Image: send base64 to Gemini vision
+  const b64 = source.split(",")[1];
+  const mime = source.split(";")[0].split(":")[1] || "image/jpeg";
+  const prompt = `${shapeInstr}\n\nExtract the recipe from this image.`;
+  const raw = await callAI(prompt, b64, mime);
   return extractJSON(raw);
 }
 
 async function translateRecipe(recipe, targetLang) {
   const langName = LANGUAGES.find(l=>l.code===targetLang)?.nativeLabel||"English";
-  const payload  = { name:recipe.name, description:recipe.description, ingredients:recipe.ingredients, steps:recipe.steps, notes:recipe.notes, foodType:recipe.foodType, difficulty:recipe.difficulty };
-  const system   = `Translate recipe JSON into ${langName}. Return ONLY valid JSON, same structure, no markdown.`;
-  const raw      = await callAI([{role:"user",content:`Translate into ${langName}:\n${JSON.stringify(payload)}`}], system);
+  const payload = { name:recipe.name, description:recipe.description, ingredients:recipe.ingredients, steps:recipe.steps, notes:recipe.notes, foodType:recipe.foodType, difficulty:recipe.difficulty };
+  const prompt = `Translate this recipe JSON into ${langName}. Return ONLY valid JSON, same structure, no markdown.\n\n${JSON.stringify(payload)}`;
+  const raw = await callAI(prompt);
   return JSON.parse(raw.replace(/```json|```/g,"").trim());
 }
 
@@ -1270,8 +1205,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
     if(cache[ck]){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
     // Translate card fields only
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
-    callAI([{role:"user",content:`Translate into ${langName}, return ONLY JSON {name,description}: ${JSON.stringify({name:book.name,description:book.description})}`}],
-      "Return ONLY valid JSON {name,description}, no markdown.",800)
+    callAI(`Translate into ${langName}, return ONLY valid JSON {name,description}, no markdown: ${JSON.stringify({name:book.name,description:book.description})}`)
       .then(raw=>{ const j=extractJSON(raw); setDisplay({name:j.name||book.name,description:j.description||book.description});
         const c=tcLoad()||{}; c[ck]={...j}; tcSave(c); })
       .catch(()=>{});
@@ -1309,8 +1243,7 @@ function RecipeCard({ recipe, onClick, users, userLang }) {
     if(cache[ck]){ setDisplay({name:cache[ck].name||recipe.name,foodType:cache[ck].foodType||recipe.foodType,difficulty:cache[ck].difficulty||recipe.difficulty}); return; }
     // Translate card fields only (lightweight)
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
-    callAI([{role:"user",content:`Translate into ${langName}, return ONLY JSON {name,foodType,difficulty}: ${JSON.stringify({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty})}`}],
-      "Return ONLY valid JSON {name,foodType,difficulty}, no markdown.",400)
+    callAI(`Translate into ${langName}, return ONLY valid JSON {name,foodType,difficulty}, no markdown: ${JSON.stringify({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty})}`)
       .then(raw=>{ const j=extractJSON(raw); setDisplay({name:j.name||recipe.name,foodType:j.foodType||recipe.foodType,difficulty:j.difficulty||recipe.difficulty});
         const c=tcLoad()||{}; c[ck]={...(c[ck]||{}), ...j}; tcSave(c); })
       .catch(()=>{});
