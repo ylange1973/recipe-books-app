@@ -12,14 +12,12 @@ export default async function handler(req, res) {
 
   try {
     const content = [];
-
     if (imageBase64) {
       content.push({
         type: "image",
         source: { type: "base64", media_type: imageType || "image/jpeg", data: imageBase64 }
       });
     }
-
     content.push({ type: "text", text: prompt });
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -27,4 +25,11 @@ export default async function handler(req, res) {
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
-        "anthropic-
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2048,
+        messages: [{ role: "user", content }]
+      })
+    });
