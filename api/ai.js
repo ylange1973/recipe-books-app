@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -40,3 +40,62 @@ export default async function handler(req, res) {
           .replace(/<script[\s\S]*?<\/script>/gi, "")
           .replace(/<style[\s\S]*?<\/style>/gi, "")
           .replace(/<!--[\s\S]*?-->/g, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+          .replace(/&nbsp;/g, " ").replace(/&#\d+;/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 12000);
+
+        console.log("[ai.js] text length:", text.length);
+        console.log("[ai.js] text preview:", text.slice(0, 200));
+
+        if (text.length < 100) {
+          return res.status(500).json({ error: "Page fetched but no readable text found. Try Paste Text instead." });
+        }
+
+        finalPrompt = prompt + "\n\nPage content:\n" + text;
+
+      } catch (fetchErr) {
+        console.log("[ai.js] fetch error:", fetchErr.message);
+        return res.status(500).json({ error: "Could not fetch URL: " + fetchErr.message + ". Try Paste Text instead." });
+      }
+    }
+
+    const content = [];
+    if (imageBase64) {
+      content.push({
+        type: "image",
+        source: { type: "base64", media_type: imageType || "image/jpeg", data: imageBase64 }
+      });
+    }
+    content.push({ type: "text", text: finalPrompt });
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2048,
+        messages: [{ role: "user", content }]
+      })
+    });
+
+    const raw = await response.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch { return res.status(500).json({ error: "HTTP " + response.status + ": " + raw.slice(0, 200) }); }
+
+    if (data.error) return res.status(500).json({ error: data.error.message || JSON.stringify(data.error) });
+    const text = data.content?.map(b => b.text || "").join("") || "";
+    return res.status(200).json({ text });
+
+  } catch (e) {
+    console.log("[ai.js] error:", e.message);
+    return res.status(500).json({ error: e.message });
+  }
+};
