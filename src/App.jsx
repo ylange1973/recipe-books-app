@@ -1394,13 +1394,17 @@ export default function App() {
     Object.keys(cache).forEach(k=>{ if(k.startsWith(recipe.id+"__")) delete cache[k]; });
     tcSave(cache);
     setShowRecipeForm(false); setEditRecipe(null);
+    // Return to recipe detail if we were editing an existing recipe
+    if(!isNew && selRecipe?.id===recipe.id) setView("recipe-detail");
     showToast(isNew?t.recipeAdded:t.recipeSaved);
   };
   const deleteRecipe=async id=>{
     if(!confirm(t.delRecipeConfirm))return;
     await fbDeleteRecipe(id);
     setRecipes(recipes.filter(r=>r.id!==id));
-    setView("list"); setSelRecipe(null); showToast(t.recipeDeleted);
+    // Return to book if we came from one, otherwise go to list
+    if(selBook){ setView("book-detail"); } else { setView("list"); }
+    setSelRecipe(null); showToast(t.recipeDeleted);
   };
   const openBook=async book=>{
     if(!isGuest){
