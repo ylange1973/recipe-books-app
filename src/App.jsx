@@ -43,7 +43,7 @@ const T = {
     ingredients:"Ingredients", qty:"Qty", unit:"Unit", ingName:"Ingredient name",
     addIngredient:"+ Add ingredient",
     steps:"Steps", stepLabel:"Step", stepPh:"Describe this step…",
-    stepImage:"Step image (optional)", addStep:"+ Add step", insertStep:"+ Insert step below",
+    stepImage:"Step image (optional)", addStep:"+ Add step", serves:"Serves", servesPlaceholder:"e.g. 4", insertStep:"+ Insert step below",
     notes:"Notes", notesPh:"Tips, variations, family memories…",
     addToBooks:"Add to books", noBooksYet:"No books yet — create one first.",
     editPerms:"Edit permissions (delegate)",
@@ -94,7 +94,7 @@ const T = {
     ingredients:"מרכיבים", qty:"כמות", unit:"יחידה", ingName:"שם המרכיב",
     addIngredient:"+ הוסף מרכיב",
     steps:"שלבים", stepLabel:"שלב", stepPh:"תאר את השלב…",
-    stepImage:"תמונת שלב (אופציונלי)", addStep:"+ הוסף שלב", insertStep:"+ הוסף שלב אחרי",
+    stepImage:"תמונת שלב (אופציונלי)", addStep:"+ הוסף שלב", serves:"מנות", servesPlaceholder:"לדוגמה: 4", insertStep:"+ הוסף שלב אחרי",
     notes:"הערות", notesPh:"טיפים, וריאציות, זיכרונות…",
     addToBooks:"הוסף לספרים", noBooksYet:"אין ספרים — צור אחד תחילה.",
     editPerms:"הרשאות עריכה",
@@ -141,7 +141,7 @@ const T = {
     ingredients:"Ingrédients", qty:"Qté", unit:"Unité", ingName:"Ingrédient",
     addIngredient:"+ Ajouter",
     steps:"Étapes", stepLabel:"Étape", stepPh:"Décrivez cette étape…",
-    stepImage:"Image (optionnel)", addStep:"+ Ajouter", insertStep:"+ Insérer après",
+    stepImage:"Image (optionnel)", addStep:"+ Ajouter", serves:"Portions", servesPlaceholder:"ex. 4", insertStep:"+ Insérer après",
     notes:"Notes", notesPh:"Conseils, variantes…",
     addToBooks:"Ajouter aux livres", noBooksYet:"Aucun livre — créez-en un d'abord.",
     editPerms:"Permissions de modification",
@@ -187,7 +187,7 @@ const T = {
     ingredients:"Ingredientes", qty:"Cant.", unit:"Unidad", ingName:"Ingrediente",
     addIngredient:"+ Añadir",
     steps:"Pasos", stepLabel:"Paso", stepPh:"Describe este paso…",
-    stepImage:"Imagen (opcional)", addStep:"+ Añadir", insertStep:"+ Insertar después",
+    stepImage:"Imagen (opcional)", addStep:"+ Añadir", serves:"Porciones", servesPlaceholder:"ej. 4", insertStep:"+ Insertar después",
     notes:"Notas", notesPh:"Consejos, variaciones…",
     addToBooks:"Añadir a libros", noBooksYet:"Sin libros — crea uno primero.",
     editPerms:"Permisos de edición",
@@ -233,7 +233,7 @@ const T = {
     ingredients:"Ingredienti", qty:"Qtà", unit:"Unità", ingName:"Ingrediente",
     addIngredient:"+ Aggiungi",
     steps:"Passi", stepLabel:"Passo", stepPh:"Descrivi questo passo…",
-    stepImage:"Immagine (opzionale)", addStep:"+ Aggiungi", insertStep:"+ Inserisci dopo",
+    stepImage:"Immagine (opzionale)", addStep:"+ Aggiungi", serves:"Porzioni", servesPlaceholder:"es. 4", insertStep:"+ Inserisci dopo",
     notes:"Note", notesPh:"Consigli, variazioni…",
     addToBooks:"Aggiungi ai libri", noBooksYet:"Nessun libro — creane uno prima.",
     editPerms:"Permessi di modifica",
@@ -357,7 +357,7 @@ function extractJSON(raw) {
   throw new Error("No valid JSON in response: " + raw.slice(0,300));
 }
 
-const RECIPE_JSON_SHAPE = `{ "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string }`;
+const RECIPE_JSON_SHAPE = `{ "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string, "serves": number }`;
 
 async function extractFromPastedText(text, langName) {
   const prompt = [
@@ -651,6 +651,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
   const [ings,setIngs]=useState(initial?.ingredients||[{id:uid(),amount:"",unit:"",name:""}]);
   const [steps,setSteps]=useState(initial?.steps||[{id:uid(),text:"",images:[]}]);
   const [notes,setNotes]=useState(initial?.notes||"");
+  const [serves,setServes]=useState(initial?.serves||"");
   const [images,setImages]=useState(initial?.images||[]);
   const [bookIds,setBookIds]=useState(initial?.bookIds||[]);
   const [srcType,setSrcType]=useState(initial?.source?.type||"manual");
@@ -666,6 +667,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
     if(r.name)setName(r.name); if(r.description)setDesc(r.description);
     if(r.foodType)setFoodType(r.foodType); if(r.difficulty)setDiff(r.difficulty);
     if(r.notes)setNotes(r.notes);
+    if(r.serves)setServes(String(r.serves));
     if(r.ingredients?.length)setIngs(r.ingredients.map(i=>({id:uid(),...i})));
     if(r.steps?.length)setSteps(r.steps.map(s=>({id:uid(),text:typeof s==="string"?s:s.text||"",images:[]})));
   };
@@ -716,7 +718,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
     onSave({
       id:initial?.id||uid(), name, description:desc, foodType, difficulty:diff, customTags:tags,
       ingredients:ings.filter(i=>i.name.trim()), steps:steps.filter(s=>s.text.trim()),
-      notes, images, bookIds,
+      notes, serves, images, bookIds,
       source:{ type:srcType, url:srcType==="url"?srcUrl:"", imageThumb:extImgSrc||"" },
       ownerId:initial?.ownerId||currentUser.id,
       originalLang:currentUser.lang||"en",
@@ -782,6 +784,8 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
           </select>
         </div>
       </div>
+      <div className="field"><label>{t.serves}</label><input className="fi" type="number" min="1" max="100" value={serves} onChange={e=>setServes(e.target.value)} placeholder={t.servesPlaceholder} style={{maxWidth:120}}/></div>
+      <div className="field" style={{display:"flex",alignItems:"center",gap:"1rem"}}><label style={{minWidth:"fit-content"}}>{t.serves}</label><input className="fi" type="number" min="1" max="100" value={serves} onChange={e=>setServes(e.target.value)} placeholder={t.servesPlaceholder} style={{maxWidth:100}}/></div>
       <div className="field"><label>{t.customTags}</label><TagInput value={tags} onChange={setTags} placeholder={t.tagPh}/></div>
       <div className="divider"/>
       <div className="field"><ImageInput images={images} onChange={setImages} label={t.recipeImages}/></div>
@@ -1133,7 +1137,7 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
       </div>
       <h1 className="rtitle">{display.name}</h1>
       {display.description&&<p className="rdesc">{display.description}</p>}
-      {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage,textDecoration:"none"}}>🔗 {(()=>{ try{ return new URL(recipe.source.url).hostname.replace(/^www\./,""); } catch{ return recipe.source.url.slice(0,40)+"…"; } })()}</a></div>}
+      {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage}}>{recipe.source.url}</a></div>}
       {recipe.source?.type==="image"&&<div className="rsource">{t.sourcePhoto}</div>}
       {rBooks.length>0&&<div style={{marginTop:".5rem",display:"flex",gap:".3rem",flexWrap:"wrap"}}>{rBooks.map(b=><span key={b.id} style={{fontSize:".78rem",background:THEME.parchment,padding:".1rem .5rem",borderRadius:10,color:THEME.darkBrown}}>📚 {b.name}</span>)}</div>}
       <div className="stat-row" style={{marginTop:"1rem"}}>
@@ -1147,6 +1151,18 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
         <div className="act-row" style={{marginBottom:"1.5rem"}}>
           <button className="btn btn-s btn-sm" onClick={onEdit}>{t.edit}</button>
           {recipe.ownerId===currentUser.id&&<button className="btn btn-d btn-sm" onClick={onDelete}>{t.del}</button>}
+        </div>
+      )}
+      {recipe.serves&&(
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:"1rem",padding:".5rem .8rem",background:THEME.warm,borderRadius:8,display:"inline-flex"}}>
+          <span style={{fontSize:"1.1rem"}}>🍽</span>
+          <span style={{fontSize:".95rem",fontWeight:500,color:THEME.darkBrown}}>{t.serves}: {recipe.serves}</span>
+        </div>
+      )}
+      {recipe.serves&&(
+        <div style={{display:"inline-flex",alignItems:"center",gap:".5rem",marginBottom:"1rem",padding:".4rem .9rem",background:THEME.warm,borderRadius:8}}>
+          <span style={{fontSize:"1rem"}}>🍽</span>
+          <span style={{fontSize:".95rem",fontWeight:500,color:THEME.darkBrown}}>{t.serves}: {recipe.serves}</span>
         </div>
       )}
       {display.ingredients?.length>0&&(
