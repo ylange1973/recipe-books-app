@@ -811,6 +811,28 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
           </div>
         )}
 
+        {srcType==="file"&&(
+          <div>
+            <div style={{fontSize:".82rem",color:THEME.brown,marginBottom:".5rem"}}>
+              Upload a PDF, Word (.docx) or image file containing a recipe.
+            </div>
+            <div style={{display:"flex",gap:".5rem",alignItems:"center",flexWrap:"wrap",marginBottom:".5rem"}}>
+              <div className="btn btn-s btn-sm" style={{position:"relative",overflow:"hidden"}}>
+                📄 Choose file
+                <input type="file" accept=".pdf,.docx,image/*"
+                  style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%",fontSize:0}}
+                  onChange={handleFileSelect}/>
+              </div>
+              {fileInfo&&<span style={{fontSize:".82rem",color:THEME.brown}}>📄 {fileInfo.name}</span>}
+            </div>
+            {fileInfo&&(
+              <button type="button" className="btn btn-p btn-sm" onClick={handleExtractFile}>
+                Extract ✨
+              </button>
+            )}
+          </div>
+        )}
+
         {aiSt==="extracting"&&<div className="ai-st"><span className="spinner"/>{t.extracting}</div>}
         {aiSt==="done"&&<div className="ai-st">✅ {t.extractDone}</div>}
         {aiSt==="error"&&<div className="ai-st" style={{flexDirection:"column",alignItems:"flex-start",gap:".2rem"}}>
