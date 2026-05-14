@@ -1093,9 +1093,10 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
   const lang=currentUser.lang||"en";
   const needsTrans=lang!==(recipe.originalLang||"en");
   const [display,setDisplay]=useState(recipe);
-  const [ts,setTs]=useState(needsTrans?"pending":"none");
+  const [ts,setTs]=useState("pending");
 
   useEffect(()=>{
+    console.log("[RecipeDetail] lang:", lang, "originalLang:", recipe.originalLang, "needsTrans:", needsTrans, "recipeId:", recipe.id);
     // Track open count in Firestore (fire and forget) — skip for guest
     if(!isGuest){
       const updated={...recipe,meta:{...recipe.meta,timesOpened:(recipe.meta?.timesOpened||0)+1,lastOpened:now()}};
@@ -1103,11 +1104,14 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
     }
     if(!needsTrans){ setDisplay(recipe); setTs("none"); return; }
     const cache=tcLoad()||{}; const ck=`${recipe.id}__${lang}`;
-    if(cache[ck]){ setDisplay({...recipe,...cache[ck]}); setTs("done"); return; }
+    console.log("[RecipeDetail] cache key:", ck, "cached:", !!cache[ck]);
+    if(cache[ck] && cache[ck].name && cache[ck].name!==recipe.name){ setDisplay({...recipe,...cache[ck]}); setTs("done"); return; }
+    if(cache[ck]) { delete cache[ck]; tcSave(cache); }
     setTs("loading");
     translateRecipe(recipe,lang)
       .then(tr=>{ const merged={...recipe,...tr}; setDisplay(merged); setTs("done"); const c=tcLoad()||{}; c[ck]=tr; tcSave(c); })
       .catch(e=>{ console.error("[RecipeDetail translate error]", e, e?.message); setDisplay(recipe); setTs("error"); });
+  },[recipe.id,lang]);
   },[recipe.id,lang]);
 
   return (
