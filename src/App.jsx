@@ -409,10 +409,10 @@ const buildCSS = (rtl) => {
 body{background:${THEME.cream};color:${THEME.espresso};font-family:'Source Sans 3',sans-serif;direction:${d};}
 .app{min-height:100vh;background:${THEME.cream};}
 .app::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
-.topbar{background:${THEME.espresso};color:${THEME.parchment};padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(44,26,14,.18);}
-.logo{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:${THEME.gold};display:flex;align-items:center;gap:.5rem;}
-.topbar-right{display:flex;align-items:center;gap:1rem;}
-.topbar-user{font-size:.85rem;color:${THEME.tan};}
+.topbar{background:${THEME.espresso};color:${THEME.parchment};padding:0 1rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(44,26,14,.18);overflow:hidden;}
+.logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:${THEME.gold};display:flex;align-items:center;gap:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1;}
+.topbar-right{display:flex;align-items:center;gap:.5rem;flex-shrink:0;}
+.topbar-user{font-size:.8rem;color:${THEME.tan};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
 .btn{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem 1.1rem;border-radius:4px;border:none;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:.88rem;font-weight:500;transition:all .15s;}
 .btn-p{background:${THEME.rust};color:#fff;} .btn-p:hover{background:#9e4a2a;}
 .btn-s{background:transparent;color:${THEME.brown};border:1.5px solid ${THEME.tan};} .btn-s:hover{background:${THEME.parchment};}
@@ -1438,7 +1438,6 @@ export default function App() {
               {LANGUAGES.map(l=><option key={l.code} value={l.code}>{l.nativeLabel}</option>)}
             </select>
             <div className="topbar-user">👤 {user.name}</div>
-            {!isGuest&&<button className="btn btn-g btn-sm" onClick={()=>setShowImport(true)}>📥 Import</button>}
             <button className="btn btn-g btn-sm" onClick={handleLogout}>{t.signOut}</button>
           </div>
         </div>
