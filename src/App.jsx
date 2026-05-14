@@ -586,7 +586,6 @@ function TagInput({ value=[], onChange, placeholder="" }) {
 }
 
 function ImageInput({ images=[], onChange, maxImages=10, label="" }) {
-  const [urlInp,setUrlInp]=useState("");
   const [uploading,setUploading]=useState(false);
   const fileRef=useRef();
   const camRef=useRef();
@@ -619,12 +618,7 @@ function ImageInput({ images=[], onChange, maxImages=10, label="" }) {
         <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={handleFiles}/>
       </div>
       {uploading&&<div style={{fontSize:".8rem",color:THEME.brown,marginBottom:".4rem"}}>⏳ Processing image…</div>}
-      <div style={{display:"flex",gap:".4rem",marginBottom:".4rem"}}>
-        <input className="fi" style={{fontSize:".85rem",padding:".4rem .6rem"}} placeholder="Or paste image URL…"
-          value={urlInp} onChange={e=>setUrlInp(e.target.value)}
-          onKeyDown={e=>{ if(e.key==="Enter"&&urlInp.trim()){ addImg(urlInp.trim(),images.length===0?"header":"inline"); setUrlInp(""); } }}/>
-        <button type="button" className="btn btn-s btn-sm" onClick={()=>{ if(urlInp.trim()){ addImg(urlInp.trim(),images.length===0?"header":"inline"); setUrlInp(""); } }}>+</button>
-      </div>
+
       {images.length>0&&(
         <div className="img-previews">
           {images.map(img=>(
@@ -849,7 +843,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
 }
 
 // ── Book Image Picker ─────────────────────────────────────────────────────
-function BookImagePicker({ cover, setCover, url, setUrl, t }) {
+function BookImagePicker({ cover, setCover, t }) {
   const [uploading,setUploading]=useState(false);
   const fileRef=useRef();
   const camRef=useRef();
@@ -878,12 +872,7 @@ function BookImagePicker({ cover, setCover, url, setUrl, t }) {
           <button onClick={()=>setCover(null)} style={{position:"absolute",top:3,right:3,background:"rgba(44,26,14,.7)",color:"#fff",border:"none",borderRadius:"50%",width:20,height:20,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
         </div>
       )}
-      <div style={{fontSize:".72rem",color:THEME.tan,marginBottom:".3rem",fontStyle:"italic"}}>Or paste a URL:</div>
-      <div style={{display:"flex",gap:".4rem"}}>
-        <input className="fi" style={{fontSize:".85rem",padding:".4rem .6rem"}} placeholder={t.pasteUrl} value={url} onChange={e=>setUrl(e.target.value)}
-          onKeyDown={e=>{ if(e.key==="Enter"&&url.trim()){setCover(url.trim());setUrl("");} }}/>
-        <button type="button" className="btn btn-s btn-sm" onClick={()=>{if(url.trim()){setCover(url.trim());setUrl("");}}}>{t.add}</button>
-      </div>
+
     </div>
   );
 }
@@ -893,7 +882,6 @@ function BookForm({ initial, onSave, onCancel, currentUser, t }) {
   const [name,setName]=useState(initial?.name||"");
   const [desc,setDesc]=useState(initial?.description||"");
   const [cover,setCover]=useState(initial?.coverImage||null);
-  const [url,setUrl]=useState("");
   const handleFile=e=>{
     console.log("[BookForm] handleFile triggered, files:", e.target.files?.length);
     const f=e.target.files[0];
@@ -934,7 +922,7 @@ function BookForm({ initial, onSave, onCancel, currentUser, t }) {
       <div className="field"><label>{t.bookDesc}</label><textarea className="fi" value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t.bookDescPh}/></div>
       <div className="field">
         <div className="sl">{t.coverImage}</div>
-        <BookImagePicker cover={cover} setCover={setCover} url={url} setUrl={setUrl} t={t}/>
+        <BookImagePicker cover={cover} setCover={setCover} t={t}/>
         {cover&&(
           <div style={{marginTop:".6rem",position:"relative",display:"inline-block"}}>
             <img src={cover} alt="" style={{width:100,height:100,objectFit:"cover",borderRadius:8,border:`2px solid ${THEME.tan}`}}/>
@@ -1447,26 +1435,13 @@ export default function App() {
           {/* Book detail */}
           {view==="book-detail"&&selBook&&(()=>{
             const bkLang=user?.lang||"en";
-            const bkOrigLang=selBook.originalLang||"en";
-            const bkNeedsTranslation=bkLang!==bkOrigLang;
             const bkCache=tcLoad()||{};
             const bkCk=`${selBook.id}__${bkLang}__card`;
-            let bkDisplayName=selBook.name;
-            let bkDisplayDesc=selBook.description;
-            if(bkNeedsTranslation){
-              if(bkCache[bkCk]){
-                bkDisplayName=bkCache[bkCk].name||selBook.name;
-                bkDisplayDesc=bkCache[bkCk].description||selBook.description;
-              } else {
-                // Trigger translation and cache it
-                const bkLangName=LANGUAGES.find(l=>l.code===bkLang)?.nativeLabel||"English";
-                callAI(`Translate into ${bkLangName}, return ONLY valid JSON {name,description}, no markdown: ${JSON.stringify({name:selBook.name,description:selBook.description})}`)
-                  .then(raw=>{ try{ const j=extractJSON(raw); const c=tcLoad()||{}; c[bkCk]=j; tcSave(c); } catch{} })
-                  .catch(()=>{});
-              }
-            }
-            return (            
-	    <div>
+            const bkNeedsTranslation=bkLang!==(selBook.originalLang||"en");
+            const bkDisplayName=bkNeedsTranslation?(bkCache[bkCk]?.name||selBook.name):selBook.name;
+            const bkDisplayDesc=bkNeedsTranslation?(bkCache[bkCk]?.description||selBook.description):selBook.description;
+            return (
+            <div>
               {/* Action bar — full width, always visible */}
               <div style={{background:"#fff",borderBottom:`1px solid ${THEME.parchment}`,padding:".6rem 1rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <button className="back-btn" style={{margin:0}} onClick={()=>{ setView("list"); setSelBook(null); }}>{t.backToBooks}</button>
