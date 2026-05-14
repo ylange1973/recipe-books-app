@@ -34,7 +34,7 @@ const T = {
     extracting:"Extracting & translating with AI…",
     extractDone:"Draft filled in — review and edit below!",
     extractError:"Could not extract. Please fill in manually.",
-    pasteText:"📋 Paste Text", pasteTextPh:"Paste the recipe text here — from a website, email, or anywhere…", pasteExtractBtn:"Extract ✨",
+    pasteText:"📋 Paste Text", fileImport:"📄 File", pasteTextPh:"Paste the recipe text here — from a website, email, or anywhere…", pasteExtractBtn:"Extract ✨",
     recipeName:"Recipe Name *", recipeNamePh:"e.g. Mum's Lasagne",
     description:"Description", descPh:"A short description…",
     foodType:"Food Type", difficulty:"Difficulty", selectOpt:"— select —",
@@ -85,7 +85,7 @@ const T = {
     extracting:"מחלץ ומתרגם עם AI…",
     extractDone:"הטיוטה מולאה — בדוק וערוך!",
     extractError:"לא ניתן לחלץ. אנא מלא ידנית.",
-    pasteText:"📋 הדבק טקסט", pasteTextPh:"הדבק כאן את טקסט המתכון…", pasteExtractBtn:"חילוץ ✨",
+    pasteText:"📋 הדבק טקסט", fileImport:"📄 קובץ", pasteTextPh:"הדבק כאן את טקסט המתכון…", pasteExtractBtn:"חילוץ ✨",
     recipeName:"שם המתכון *", recipeNamePh:"לדוגמה: לזניה של אמא",
     description:"תיאור", descPh:"תיאור קצר…",
     foodType:"סוג מנה", difficulty:"רמת קושי", selectOpt:"— בחר —",
@@ -132,7 +132,7 @@ const T = {
     source:"Source", manual:"✍️ Manuel", website:"🔗 Site web", image:"🖼 Image",
     extractBtn:"Extraire ✨", uploadExtract:"📷 Télécharger une image",
     extracting:"Extraction & traduction en cours…", extractDone:"Brouillon rempli!", extractError:"Échec de l'extraction.",
-    pasteText:"📋 Coller le texte", pasteTextPh:"Collez ici le texte de la recette…", pasteExtractBtn:"Extraire ✨",
+    pasteText:"📋 Coller le texte", fileImport:"📄 Fichier", pasteTextPh:"Collez ici le texte de la recette…", pasteExtractBtn:"Extraire ✨",
     recipeName:"Nom *", recipeNamePh:"ex. Lasagnes de Maman",
     description:"Description", descPh:"Une courte description…",
     foodType:"Type", difficulty:"Difficulté", selectOpt:"— sélectionner —",
@@ -178,7 +178,7 @@ const T = {
     source:"Fuente", manual:"✍️ Manual", website:"🔗 Sitio web", image:"🖼 Imagen",
     extractBtn:"Extraer ✨", uploadExtract:"📷 Subir imagen",
     extracting:"Extrayendo y traduciendo…", extractDone:"¡Borrador listo!", extractError:"No se pudo extraer.",
-    pasteText:"📋 Pegar texto", pasteTextPh:"Pega aquí el texto de la receta…", pasteExtractBtn:"Extraer ✨",
+    pasteText:"📋 Pegar texto", fileImport:"📄 Archivo", pasteTextPh:"Pega aquí el texto de la receta…", pasteExtractBtn:"Extraer ✨",
     recipeName:"Nombre *", recipeNamePh:"ej. Lasaña de mamá",
     description:"Descripción", descPh:"Una breve descripción…",
     foodType:"Tipo", difficulty:"Dificultad", selectOpt:"— seleccionar —",
@@ -224,7 +224,7 @@ const T = {
     source:"Fonte", manual:"✍️ Manuale", website:"🔗 Sito web", image:"🖼 Immagine",
     extractBtn:"Estrai ✨", uploadExtract:"📷 Carica immagine",
     extracting:"Estrazione e traduzione…", extractDone:"Bozza compilata!", extractError:"Estrazione fallita.",
-    pasteText:"📋 Incolla testo", pasteTextPh:"Incolla qui il testo della ricetta…", pasteExtractBtn:"Estrai ✨",
+    pasteText:"📋 Incolla testo", fileImport:"📄 File", pasteTextPh:"Incolla qui il testo della ricetta…", pasteExtractBtn:"Estrai ✨",
     recipeName:"Nome *", recipeNamePh:"es. Lasagne della Mamma",
     description:"Descrizione", descPh:"Una breve descrizione…",
     foodType:"Tipo", difficulty:"Difficoltà", selectOpt:"— seleziona —",
@@ -530,11 +530,10 @@ textarea.fi{resize:vertical;min-height:80px;}
 .le-add{background:transparent;border:1.5px dashed ${THEME.tan};color:${THEME.brown};padding:.4rem .8rem;border-radius:5px;cursor:pointer;font-size:.82rem;font-family:'Source Sans 3',sans-serif;}
 .le-add:hover{border-color:${THEME.brown};}
 /* Source tabs */
-.src-tabs{display:flex;border:1.5px solid ${THEME.tan};border-radius:7px;overflow:hidden;margin-bottom:1rem;}
-.src-tab{flex:1;padding:.5rem .3rem;text-align:center;cursor:pointer;font-size:.8rem;font-family:'Source Sans 3',sans-serif;background:#fff;color:${THEME.brown};border:none;border-right:1px solid ${THEME.tan};}
-.src-tab:last-child{border-right:none;}
+.src-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:1rem;}
+.src-tab{padding:.5rem .3rem;text-align:center;cursor:pointer;font-size:.8rem;font-family:'Source Sans 3',sans-serif;background:#fff;color:${THEME.brown};border:1.5px solid ${THEME.tan};border-radius:6px;transition:all .15s;}
 .src-tab:hover{background:${THEME.parchment};}
-.src-tab.act{background:${THEME.brown};color:#fff;}
+.src-tab.act{background:${THEME.brown};color:#fff;border-color:${THEME.brown};}
 /* AI status */
 .ai-st{background:${THEME.warm};border:1px solid ${THEME.tan};border-radius:6px;padding:.7rem 1rem;font-size:.85rem;color:${THEME.darkBrown};margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;}
 .spinner{width:18px;height:18px;border:2.5px solid ${THEME.tan};border-top-color:${THEME.rust};border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
@@ -670,6 +669,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
   const [perms,setPerms]=useState(initial?.editPerms||[]);
   const [aiSt,setAiSt]=useState("");
   const [aiErr,setAiErr]=useState("");
+  const [fileInfo,setFileInfo]=useState(null);
   const [extImgSrc,setExtImgSrc]=useState(null);
   const extRef=useRef();
 
@@ -698,6 +698,40 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
       setAiSt("done");
     }
     catch(e){ console.error("[paste extract error]", e); setAiSt("error"); setAiErr(String(e?.message||e)); }
+  };
+  const fileRef2=useRef();
+  const handleFileSelect=e=>{
+    const f=e.target.files[0]; if(!f)return;
+    if(f.size > 3 * 1024 * 1024){
+      setAiErr("File is too large (max 3MB). Try a smaller file or use the Paste Text option.");
+      setAiSt("error");
+      return;
+    }
+    setFileInfo({name:f.name, type:f.type, file:f});
+    setAiSt(""); setAiErr("");
+    e.target.value="";
+  };
+  const handleExtractFile=async()=>{
+    if(!fileInfo)return; setAiSt("extracting"); setAiErr("");
+    try{
+      const langName = (currentUser.lang||"en") === "en" ? "English" : LANGUAGES.find(l=>l.code===(currentUser.lang||"en"))?.nativeLabel||"English";
+      // For images, use existing image extraction
+      if(fileInfo.type.startsWith("image/")){
+        const compressed=await compressImage(await readFileAsDataURL(fileInfo.file));
+        applyExtracted(await extractAndTranslate(compressed,"image",currentUser.lang||"en"));
+      } else {
+        // For PDF/Word, send to server for text extraction
+        const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=ev=>res(ev.target.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(fileInfo.file); });
+        const langShape=RECIPE_JSON_SHAPE;
+        const prompt=`Extract the recipe from this file and return JSON translated into ${langName}. ${langShape}`;
+        const apiRes=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,fileBase64:b64,fileType:fileInfo.type})});
+        const data=await apiRes.json();
+        if(data.error) throw new Error(data.error);
+        applyExtracted(extractJSON(data.text));
+      }
+      setAiSt("done");
+    }
+    catch(e){ console.error("[file extract error]", e); setAiSt("error"); setAiErr(String(e?.message||e)); }
   };
   const handleExtractImg=e=>{
     const f=e.target.files[0]; if(!f)return;
@@ -753,9 +787,9 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
       <div className="field">
         <label>{t.source}</label>
         <div className="src-tabs">
-          {["manual","url","paste"].map(tp=>(
+          {["manual","url","paste","file"].map(tp=>(
             <button key={tp} type="button" className={`src-tab${srcType===tp?" act":""}`} onClick={()=>setSrcType(tp)}>
-              {tp==="manual"?t.manual:tp==="url"?t.website:t.pasteText}
+              {tp==="manual"?t.manual:tp==="url"?t.website:tp==="paste"?t.pasteText:t.fileImport}
             </button>
           ))}
         </div>

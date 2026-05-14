@@ -1,3 +1,6 @@
+import mammoth from "mammoth";
+import pdfParse from "pdf-parse";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -8,17 +11,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
   }
 
-  const { prompt, imageBase64, imageType, url } = req.body;
-
-  console.log("[ai.js] url:", url ? url.slice(0,80) : "none");
-  console.log("[ai.js] prompt length:", prompt?.length);
+  const { prompt, imageBase64, imageType, url, fileBase64, fileType } = req.body;
 
   try {
     let finalPrompt = prompt;
 
+    // ── URL fetch ──────────────────────────────────────────────────────────
     if (url) {
       try {
-        console.log("[ai.js] fetching URL...");
         const pageRes = await fetch(url, {
           headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -27,15 +27,11 @@ export default async function handler(req, res) {
           signal: AbortSignal.timeout(10000)
         });
 
-        console.log("[ai.js] page status:", pageRes.status);
-
         if (!pageRes.ok) {
           return res.status(500).json({ error: `Could not access this URL — the website may require login or block automated access (HTTP ${pageRes.status}). Try copying the recipe text and using the Paste Text option instead.` });
         }
 
         const html = await pageRes.text();
-        console.log("[ai.js] html length:", html.length);
-
         const text = html
           .replace(/<script[\s\S]*?<\/script>/gi, "")
           .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -47,22 +43,46 @@ export default async function handler(req, res) {
           .trim()
           .slice(0, 12000);
 
-        console.log("[ai.js] extracted text length:", text.length);
-        console.log("[ai.js] text preview:", text.slice(0, 200));
-
         if (text.length < 100) {
-          return res.status(500).json({ error: "Page fetched but no readable content found — the site may use JavaScript to load content. Try copying the recipe text and using the Paste Text option instead." });
+          return res.status(500).json({ error: "Page fetched but no readable content found. Try copying the recipe text and using Paste Text instead." });
         }
-
         finalPrompt = prompt + "\n\nPage content:\n" + text;
-        console.log("[ai.js] finalPrompt length:", finalPrompt.length);
 
       } catch (fetchErr) {
-        console.log("[ai.js] fetch error:", fetchErr.message);
         return res.status(500).json({ error: "Could not access this URL — the website may be blocking automated access. Try copying the recipe text and using the Paste Text option instead." });
       }
     }
 
+    // ── File extraction (PDF or Word) ──────────────────────────────────────
+    if (fileBase64 && fileType) {
+      try {
+        const buffer = Buffer.from(fileBase64, "base64");
+        let extractedText = "";
+
+        if (fileType === "application/pdf") {
+          const data = await pdfParse(buffer);
+          extractedText = data.text?.trim() || "";
+        } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+          const result = await mammoth.extractRawText({ buffer });
+          extractedText = result.value?.trim() || "";
+        } else if (fileType === "application/msword") {
+          return res.status(400).json({ error: "Old .doc format is not supported. Please save as .docx and try again." });
+        } else {
+          return res.status(400).json({ error: "Unsupported file type. Please use PDF or Word (.docx)." });
+        }
+
+        if (!extractedText || extractedText.length < 50) {
+          return res.status(500).json({ error: "Could not extract text from this file. The file may be scanned/image-based. Try the Image option instead." });
+        }
+
+        finalPrompt = prompt + "\n\nFile content:\n" + extractedText.slice(0, 12000);
+
+      } catch (fileErr) {
+        return res.status(500).json({ error: "Error reading file: " + fileErr.message });
+      }
+    }
+
+    // ── Call Claude ────────────────────────────────────────────────────────
     const content = [];
     if (imageBase64) {
       content.push({
@@ -96,7 +116,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ text });
 
   } catch (e) {
-    console.log("[ai.js] top-level error:", e.message);
     return res.status(500).json({ error: e.message });
   }
 }
