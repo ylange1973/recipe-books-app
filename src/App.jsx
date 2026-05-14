@@ -41,7 +41,7 @@ const T = {
     customTags:"Custom Tags", tagPh:"Add tag & press Enter…",
     recipeImages:"Recipe Images (first ⭐ = header)",
     ingredients:"Ingredients", qty:"Qty", unit:"Unit", ingName:"Ingredient name",
-    addIngredient:"+ Add ingredient",
+    addIngredient:"+ Add ingredient", addSection:"÷ Add section",
     steps:"Steps", stepLabel:"Step", stepPh:"Describe this step…",
     stepImage:"Step image (optional)", addStep:"+ Add step", serves:"Serves", servesPlaceholder:"e.g. 4", insertStep:"+ Insert step below",
     notes:"Notes", notesPh:"Tips, variations, family memories…",
@@ -92,7 +92,7 @@ const T = {
     customTags:"תגיות", tagPh:"הוסף תגית ולחץ Enter…",
     recipeImages:"תמונות מתכון (ראשונה ⭐ = כותרת)",
     ingredients:"מרכיבים", qty:"כמות", unit:"יחידה", ingName:"שם המרכיב",
-    addIngredient:"+ הוסף מרכיב",
+    addIngredient:"+ הוסף מרכיב", addSection:"÷ הוסף כותרת",
     steps:"שלבים", stepLabel:"שלב", stepPh:"תאר את השלב…",
     stepImage:"תמונת שלב (אופציונלי)", addStep:"+ הוסף שלב", serves:"מנות", servesPlaceholder:"לדוגמה: 4", insertStep:"+ הוסף שלב אחרי",
     notes:"הערות", notesPh:"טיפים, וריאציות, זיכרונות…",
@@ -139,7 +139,7 @@ const T = {
     customTags:"Tags", tagPh:"Ajouter un tag…",
     recipeImages:"Images (première ⭐ = en-tête)",
     ingredients:"Ingrédients", qty:"Qté", unit:"Unité", ingName:"Ingrédient",
-    addIngredient:"+ Ajouter",
+    addIngredient:"+ Ajouter", addSection:"÷ Ajouter section",
     steps:"Étapes", stepLabel:"Étape", stepPh:"Décrivez cette étape…",
     stepImage:"Image (optionnel)", addStep:"+ Ajouter", serves:"Portions", servesPlaceholder:"ex. 4", insertStep:"+ Insérer après",
     notes:"Notes", notesPh:"Conseils, variantes…",
@@ -185,7 +185,7 @@ const T = {
     customTags:"Etiquetas", tagPh:"Añadir etiqueta…",
     recipeImages:"Imágenes (primera ⭐ = cabecera)",
     ingredients:"Ingredientes", qty:"Cant.", unit:"Unidad", ingName:"Ingrediente",
-    addIngredient:"+ Añadir",
+    addIngredient:"+ Añadir", addSection:"÷ Añadir sección",
     steps:"Pasos", stepLabel:"Paso", stepPh:"Describe este paso…",
     stepImage:"Imagen (opcional)", addStep:"+ Añadir", serves:"Porciones", servesPlaceholder:"ej. 4", insertStep:"+ Insertar después",
     notes:"Notas", notesPh:"Consejos, variaciones…",
@@ -231,7 +231,7 @@ const T = {
     customTags:"Tag", tagPh:"Aggiungi tag…",
     recipeImages:"Immagini (prima ⭐ = intestazione)",
     ingredients:"Ingredienti", qty:"Qtà", unit:"Unità", ingName:"Ingrediente",
-    addIngredient:"+ Aggiungi",
+    addIngredient:"+ Aggiungi", addSection:"÷ Aggiungi sezione",
     steps:"Passi", stepLabel:"Passo", stepPh:"Descrivi questo passo…",
     stepImage:"Immagine (opzionale)", addStep:"+ Aggiungi", serves:"Porzioni", servesPlaceholder:"es. 4", insertStep:"+ Inserisci dopo",
     notes:"Note", notesPh:"Consigli, variazioni…",
@@ -357,7 +357,7 @@ function extractJSON(raw) {
   throw new Error("No valid JSON in response: " + raw.slice(0,300));
 }
 
-const RECIPE_JSON_SHAPE = `{ "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string, "serves": number }`;
+const RECIPE_JSON_SHAPE = `{ "name": string, "description": string, "ingredients": [{"amount": string, "unit": string, "name": string, "type": "ingredient"} or {"type": "section", "title": string}], "steps": [{"text": string}], "foodType": string, "difficulty": string, "notes": string, "serves": number }`;
 
 async function extractFromPastedText(text, langName) {
   const prompt = [
@@ -391,12 +391,22 @@ async function extractAndTranslate(source, type, targetLang) {
 
 async function translateRecipe(recipe, targetLang) {
   const langName = LANGUAGES.find(l=>l.code===targetLang)?.nativeLabel||"English";
-  const payload = { name:recipe.name, description:recipe.description, ingredients:recipe.ingredients, steps:recipe.steps, notes:recipe.notes, foodType:recipe.foodType, difficulty:recipe.difficulty };
+  // Strip units before sending to AI — we translate them ourselves via UNIT_DISPLAY
+  const ingredientsForAI = (recipe.ingredients||[]).map(i=>({...i, unit:""}));
+  const payload = { name:recipe.name, description:recipe.description, ingredients:ingredientsForAI, steps:recipe.steps, notes:recipe.notes, foodType:recipe.foodType, difficulty:recipe.difficulty };
   const prompt = `Translate this recipe JSON into ${langName}. Return ONLY valid JSON, same structure, no markdown.\n\n${JSON.stringify(payload)}`;
   console.log("[translateRecipe] calling AI, payload size:", JSON.stringify(payload).length);
   const raw = await callAI(prompt);
   console.log("[translateRecipe] raw response:", raw?.slice(0,200));
-  return JSON.parse(raw.replace(/```json|```/g,"").trim());
+  const translated = JSON.parse(raw.replace(/```json|```/g,"").trim());
+  // Restore original units (we handle unit display translation separately via UNIT_DISPLAY)
+  if(translated.ingredients && recipe.ingredients) {
+    translated.ingredients = translated.ingredients.map((ing, i) => ({
+      ...ing,
+      unit: recipe.ingredients[i]?.unit || ing.unit || ""
+    }));
+  }
+  return translated;
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────
@@ -668,7 +678,10 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
     if(r.foodType)setFoodType(r.foodType); if(r.difficulty)setDiff(r.difficulty);
     if(r.notes)setNotes(r.notes);
     if(r.serves)setServes(String(r.serves));
-    if(r.ingredients?.length)setIngs(r.ingredients.map(i=>({id:uid(),...i})));
+    if(r.ingredients?.length)setIngs(r.ingredients.map(i=>({
+      id:uid(),
+      ...(i.type==="section" ? {type:"section",title:i.title||i.name||""} : {type:"ingredient",amount:i.amount||"",unit:i.unit||"",name:i.name||""})
+    })));
     if(r.steps?.length)setSteps(r.steps.map(s=>({id:uid(),text:typeof s==="string"?s:s.text||"",images:[]})));
   };
 
@@ -699,6 +712,12 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
   const addIng=()=>setIngs([...ings,{id:uid(),amount:"",unit:"",name:""}]);
   const upIng=(id,f,v)=>setIngs(ings.map(i=>i.id===id?{...i,[f]:v}:i));
   const rmIng=id=>setIngs(ings.filter(i=>i.id!==id));
+  const insertSectionAbove=id=>{
+    const idx=ings.findIndex(i=>i.id===id);
+    if(idx===-1)return;
+    const sec={id:uid(),type:"section",title:""};
+    const next=[...ings]; next.splice(idx,0,sec); setIngs(next);
+  };
   const addStep=()=>setSteps([...steps,{id:uid(),text:"",images:[]}]);
   const insertStepAfter=id=>{
     const idx=steps.findIndex(s=>s.id===id);
@@ -717,7 +736,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
     if(!name.trim()){ alert(t.enterRecipeName); return; }
     onSave({
       id:initial?.id||uid(), name, description:desc, foodType, difficulty:diff, customTags:tags,
-      ingredients:ings.filter(i=>i.name.trim()), steps:steps.filter(s=>s.text.trim()),
+      ingredients:ings.filter(i=>i.type==="section" ? i.title.trim() : i.name.trim()), steps:steps.filter(s=>s.text.trim()),
       notes, serves, images, bookIds,
       source:{ type:srcType, url:srcType==="url"?srcUrl:"", imageThumb:extImgSrc||"" },
       ownerId:initial?.ownerId||currentUser.id,
@@ -793,14 +812,28 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
         <label>{t.ingredients}</label>
         <div className="le">
           {ings.map(i=>(
-            <div key={i.id} className="le-row">
-              <input style={{maxWidth:70}} placeholder={t.qty} value={i.amount} onChange={e=>upIng(i.id,"amount",e.target.value)}/>
-              <input style={{maxWidth:60}} placeholder={t.unit} value={i.unit} onChange={e=>upIng(i.id,"unit",e.target.value)}/>
-              <input placeholder={t.ingName} value={i.name} onChange={e=>upIng(i.id,"name",e.target.value)}/>
-              <button type="button" className="btn btn-ic btn-s btn-sm" onClick={()=>rmIng(i.id)}>×</button>
-            </div>
+            i.type==="section" ? (
+              <div key={i.id} className="le-row" style={{alignItems:"center"}}>
+                <input placeholder="Section name…" value={i.title} onChange={e=>upIng(i.id,"title",e.target.value)}
+                  style={{flex:1,fontWeight:600,fontSize:".88rem",fontStyle:"italic",color:THEME.brown,borderBottom:`2px solid ${THEME.tan}`,border:"none",borderBottom:`1.5px solid ${THEME.tan}`,outline:"none",background:"transparent",padding:".3rem 0"}}/>
+                <button type="button" className="btn btn-ic btn-s btn-sm" onClick={()=>rmIng(i.id)}>×</button>
+              </div>
+            ) : (
+              <div key={i.id} className="le-row">
+                <button type="button" title={t.addSection}
+                  style={{background:"none",border:"none",cursor:"pointer",color:THEME.tan,fontSize:".75rem",padding:"0 .2rem",flexShrink:0}}
+                  onClick={()=>insertSectionAbove(i.id)}>÷</button>
+                <input style={{maxWidth:65}} placeholder={t.qty} value={i.amount} onChange={e=>upIng(i.id,"amount",e.target.value)}/>
+                <input style={{maxWidth:55}} placeholder={t.unit} value={i.unit} onChange={e=>upIng(i.id,"unit",e.target.value)}/>
+                <input placeholder={t.ingName} value={i.name} onChange={e=>upIng(i.id,"name",e.target.value)}/>
+                <button type="button" className="btn btn-ic btn-s btn-sm" onClick={()=>rmIng(i.id)}>×</button>
+              </div>
+            )
           ))}
-          <button type="button" className="le-add" onClick={addIng}>{t.addIngredient}</button>
+          <div style={{display:"flex",gap:".4rem"}}>
+            <button type="button" className="le-add" onClick={addIng}>{t.addIngredient}</button>
+            <button type="button" className="le-add" onClick={()=>setIngs([...ings,{id:uid(),type:"section",title:""}])}>{t.addSection}</button>
+          </div>
         </div>
       </div>
       <div className="divider"/>
@@ -1136,7 +1169,7 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
       </div>
       <h1 className="rtitle">{display.name}</h1>
       {display.description&&<p className="rdesc">{display.description}</p>}
-      {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage,textDecoration:"none"}}>🔗 {(()=>{ try{ return new URL(recipe.source.url).hostname.replace(/^www\./,""); } catch{ return recipe.source.url.slice(0,40)+"…"; } })()}</a></div>}
+      {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage}}>{recipe.source.url}</a></div>}
       {recipe.source?.type==="image"&&<div className="rsource">{t.sourcePhoto}</div>}
       {rBooks.length>0&&<div style={{marginTop:".5rem",display:"flex",gap:".3rem",flexWrap:"wrap"}}>{rBooks.map(b=><span key={b.id} style={{fontSize:".78rem",background:THEME.parchment,padding:".1rem .5rem",borderRadius:10,color:THEME.darkBrown}}>📚 {b.name}</span>)}</div>}
       <div className="stat-row" style={{marginTop:"1rem"}}>
@@ -1163,6 +1196,11 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
           <div className="rsec-title">{t.ingredients}</div>
           <ul className="ing-list">
             {display.ingredients.map((ing,i)=>(
+              ing.type==="section" ? (
+                <li key={ing.id||i} style={{listStyle:"none",padding:".6rem 0 .2rem",borderBottom:`2px solid ${THEME.tan}`,fontWeight:600,fontSize:".9rem",color:THEME.brown,fontStyle:"italic"}}>
+                  {ing.title}
+                </li>
+              ) : (
               <li key={ing.id||i} className="ing-item">
                 {(() => { const {qty,unit} = parseIngredient(ing, currentUser?.lang||"en"); return (<>
                   <span className="ing-qty">{qty}</span>
@@ -1170,6 +1208,7 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
                   <span className="ing-name">{ing.name}</span>
                 </>); })()}
               </li>
+              )
             ))}
           </ul>
         </div>
