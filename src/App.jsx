@@ -1133,7 +1133,7 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
       </div>
       <h1 className="rtitle">{display.name}</h1>
       {display.description&&<p className="rdesc">{display.description}</p>}
-      {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage,textDecoration:"none"}}>🔗 {(()=>{ try{ return new URL(recipe.source.url).hostname.replace(/^www\./,""); } catch{ return recipe.source.url.slice(0,40)+"…"; } })()}</a></div>}{recipe.source.url}</a></div>}
+      {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage,textDecoration:"none"}}>🔗 {(()=>{ try{ return new URL(recipe.source.url).hostname.replace(/^www\./,""); } catch{ return recipe.source.url.slice(0,40)+"…"; } })()}</a></div>}
       {recipe.source?.type==="image"&&<div className="rsource">{t.sourcePhoto}</div>}
       {rBooks.length>0&&<div style={{marginTop:".5rem",display:"flex",gap:".3rem",flexWrap:"wrap"}}>{rBooks.map(b=><span key={b.id} style={{fontSize:".78rem",background:THEME.parchment,padding:".1rem .5rem",borderRadius:10,color:THEME.darkBrown}}>📚 {b.name}</span>)}</div>}
       <div className="stat-row" style={{marginTop:"1rem"}}>
