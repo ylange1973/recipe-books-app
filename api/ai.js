@@ -1,5 +1,4 @@
 import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -15,8 +14,9 @@ export default async function handler(req, res) {
 
   try {
     let finalPrompt = prompt;
+    const content = [];
 
-    // ── URL fetch ──────────────────────────────────────────────────────────
+    // ── URL fetch ────────────────────────────────────────────────────────────
     if (url) {
       try {
         const pageRes = await fetch(url, {
@@ -26,11 +26,9 @@ export default async function handler(req, res) {
           },
           signal: AbortSignal.timeout(10000)
         });
-
         if (!pageRes.ok) {
-          return res.status(500).json({ error: `Could not access this URL — the website may require login or block automated access (HTTP ${pageRes.status}). Try copying the recipe text and using the Paste Text option instead.` });
+          return res.status(500).json({ error: `Could not access this URL (HTTP ${pageRes.status}). Try the Paste Text option instead.` });
         }
-
         const html = await pageRes.text();
         const text = html
           .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -39,59 +37,57 @@ export default async function handler(req, res) {
           .replace(/<[^>]+>/g, " ")
           .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
           .replace(/&nbsp;/g, " ").replace(/&#\d+;/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 12000);
-
+          .replace(/\s+/g, " ").trim().slice(0, 12000);
         if (text.length < 100) {
-          return res.status(500).json({ error: "Page fetched but no readable content found. Try copying the recipe text and using Paste Text instead." });
+          return res.status(500).json({ error: "Page fetched but no readable content found. Try Paste Text instead." });
         }
         finalPrompt = prompt + "\n\nPage content:\n" + text;
-
       } catch (fetchErr) {
-        return res.status(500).json({ error: "Could not access this URL — the website may be blocking automated access. Try copying the recipe text and using the Paste Text option instead." });
+        return res.status(500).json({ error: "Could not access this URL — the website may be blocking automated access. Try the Paste Text option instead." });
       }
     }
 
-    // ── File extraction (PDF or Word) ──────────────────────────────────────
+    // ── File handling ────────────────────────────────────────────────────────
     if (fileBase64 && fileType) {
-      try {
-        const buffer = Buffer.from(fileBase64, "base64");
-        let extractedText = "";
-
-        if (fileType === "application/pdf") {
-          const data = await pdfParse(buffer);
-          extractedText = data.text?.trim() || "";
-        } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      if (fileType === "application/pdf") {
+        // Send PDF directly to Claude as a document — Claude can read PDFs natively
+        content.push({
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: fileBase64 }
+        });
+      } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        // Extract text from Word using mammoth
+        try {
+          const buffer = Buffer.from(fileBase64, "base64");
           const result = await mammoth.extractRawText({ buffer });
-          extractedText = result.value?.trim() || "";
-        } else if (fileType === "application/msword") {
-          return res.status(400).json({ error: "Old .doc format is not supported. Please save as .docx and try again." });
-        } else {
-          return res.status(400).json({ error: "Unsupported file type. Please use PDF or Word (.docx)." });
+          const extractedText = result.value?.trim() || "";
+          if (!extractedText || extractedText.length < 50) {
+            return res.status(500).json({ error: "Could not extract text from this Word file. Try copying the text and using Paste Text instead." });
+          }
+          finalPrompt = prompt + "\n\nFile content:\n" + extractedText.slice(0, 12000);
+        } catch (wordErr) {
+          return res.status(500).json({ error: "Error reading Word file: " + wordErr.message });
         }
-
-        if (!extractedText || extractedText.length < 50) {
-          return res.status(500).json({ error: "Could not extract text from this file. The file may be scanned/image-based. Try the Image option instead." });
-        }
-
-        finalPrompt = prompt + "\n\nFile content:\n" + extractedText.slice(0, 12000);
-
-      } catch (fileErr) {
-        return res.status(500).json({ error: "Error reading file: " + fileErr.message });
+      } else if (fileType === "application/msword") {
+        return res.status(400).json({ error: "Old .doc format not supported. Please save as .docx and try again." });
+      } else if (fileType.startsWith("image/")) {
+        // Image handled below via imageBase64
+      } else {
+        return res.status(400).json({ error: "Unsupported file type. Please use PDF, Word (.docx) or an image." });
       }
     }
 
-    // ── Call Claude ────────────────────────────────────────────────────────
-    const content = [];
+    // ── Image ────────────────────────────────────────────────────────────────
     if (imageBase64) {
       content.push({
         type: "image",
         source: { type: "base64", media_type: imageType || "image/jpeg", data: imageBase64 }
       });
     }
+
     content.push({ type: "text", text: finalPrompt });
 
+    // ── Call Claude ──────────────────────────────────────────────────────────
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
