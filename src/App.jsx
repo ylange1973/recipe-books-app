@@ -1104,8 +1104,10 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
     }
     if(!needsTrans){ setDisplay(recipe); setTs("none"); return; }
     const cache=tcLoad()||{}; const ck=`${recipe.id}__${lang}`;
-    console.log("[RecipeDetail] cache key:", ck, "cached:", !!cache[ck]);
-    if(cache[ck] && cache[ck].name && cache[ck].name!==recipe.name){ setDisplay({...recipe,...cache[ck]}); setTs("done"); return; }
+    console.log("[RecipeDetail] cache key:", ck, "cached:", !!cache[ck], "has ingredients:", !!cache[ck]?.ingredients);
+    // Only use cache if it has full content (ingredients = full translation, not just card)
+    if(cache[ck]?.ingredients){ setDisplay({...recipe,...cache[ck]}); setTs("done"); return; }
+    // Clear partial cache entry
     if(cache[ck]) { delete cache[ck]; tcSave(cache); }
     setTs("loading");
     translateRecipe(recipe,lang)
@@ -1210,7 +1212,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
     // Check translation cache
     const cache=tcLoad()||{};
     const ck=`${book.id}__${lang}`;
-    if(cache[ck]){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
+    if(cache[ck]?.name){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
     // Translate card fields only
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
     callAI(`Translate into ${langName}, return ONLY valid JSON {name,description}, no markdown: ${JSON.stringify({name:book.name,description:book.description})}`)
@@ -1248,7 +1250,8 @@ function RecipeCard({ recipe, onClick, users, userLang }) {
     // Check translation cache first
     const cache=tcLoad()||{};
     const ck=`${recipe.id}__${lang}`;
-    if(cache[ck]){ setDisplay({name:cache[ck].name||recipe.name,foodType:cache[ck].foodType||recipe.foodType,difficulty:cache[ck].difficulty||recipe.difficulty}); return; }
+    // Only use cache for card if it has at least name translated
+    if(cache[ck]?.name){ setDisplay({name:cache[ck].name||recipe.name,foodType:cache[ck].foodType||recipe.foodType,difficulty:cache[ck].difficulty||recipe.difficulty}); return; }
     // Translate card fields only (lightweight)
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
     callAI(`Translate into ${langName}, return ONLY valid JSON {name,foodType,difficulty}, no markdown: ${JSON.stringify({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty})}`)
@@ -1460,10 +1463,11 @@ export default function App() {
           {view==="book-detail"&&selBook&&(()=>{
             const bkLang=user?.lang||"en";
             const bkCache=tcLoad()||{};
-            const bkCk=`${selBook.id}__${bkLang}__card`;
+            const bkCk=`${selBook.id}__${bkLang}`;
             const bkNeedsTranslation=bkLang!==(selBook.originalLang||"en");
-            const bkDisplayName=bkNeedsTranslation?(bkCache[bkCk]?.name||selBook.name):selBook.name;
-            const bkDisplayDesc=bkNeedsTranslation?(bkCache[bkCk]?.description||selBook.description):selBook.description;
+            const bkCached=bkCache[bkCk];
+            const bkDisplayName=bkNeedsTranslation?(bkCached?.name||selBook.name):selBook.name;
+            const bkDisplayDesc=bkNeedsTranslation?(bkCached?.description||selBook.description):selBook.description;
             return (
             <div>
               {/* Action bar — full width, always visible */}
