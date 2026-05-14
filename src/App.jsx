@@ -1447,13 +1447,26 @@ export default function App() {
           {/* Book detail */}
           {view==="book-detail"&&selBook&&(()=>{
             const bkLang=user?.lang||"en";
+            const bkOrigLang=selBook.originalLang||"en";
+            const bkNeedsTranslation=bkLang!==bkOrigLang;
             const bkCache=tcLoad()||{};
             const bkCk=`${selBook.id}__${bkLang}__card`;
-            const bkNeedsTranslation=bkLang!==(selBook.originalLang||"en");
-            const bkDisplayName=bkNeedsTranslation?(bkCache[bkCk]?.name||selBook.name):selBook.name;
-            const bkDisplayDesc=bkNeedsTranslation?(bkCache[bkCk]?.description||selBook.description):selBook.description;
-            return (
-            <div>
+            let bkDisplayName=selBook.name;
+            let bkDisplayDesc=selBook.description;
+            if(bkNeedsTranslation){
+              if(bkCache[bkCk]){
+                bkDisplayName=bkCache[bkCk].name||selBook.name;
+                bkDisplayDesc=bkCache[bkCk].description||selBook.description;
+              } else {
+                // Trigger translation and cache it
+                const bkLangName=LANGUAGES.find(l=>l.code===bkLang)?.nativeLabel||"English";
+                callAI(`Translate into ${bkLangName}, return ONLY valid JSON {name,description}, no markdown: ${JSON.stringify({name:selBook.name,description:selBook.description})}`)
+                  .then(raw=>{ try{ const j=extractJSON(raw); const c=tcLoad()||{}; c[bkCk]=j; tcSave(c); } catch{} })
+                  .catch(()=>{});
+              }
+            }
+            return (            
+	    <div>
               {/* Action bar — full width, always visible */}
               <div style={{background:"#fff",borderBottom:`1px solid ${THEME.parchment}`,padding:".6rem 1rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <button className="back-btn" style={{margin:0}} onClick={()=>{ setView("list"); setSelBook(null); }}>{t.backToBooks}</button>
