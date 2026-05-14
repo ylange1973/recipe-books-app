@@ -811,7 +811,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
             <div style={{marginTop:".4rem"}}><ImageInput images={step.images||[]} onChange={imgs=>upStep(step.id,"images",imgs)} maxImages={3} label={t.stepImage}/></div>
             <div style={{display:"flex",gap:".4rem",marginTop:".4rem"}}>
               <button type="button" className="btn btn-s btn-sm" onClick={()=>insertStepAfter(step.id)}>{t.insertStep}</button>
-              {steps.length>1&&<button type="button" className="btn btn-d btn-sm" onClick={()=>rmStep(step.id)}>−</button>}
+              <button type="button" className="btn btn-d btn-sm" onClick={()=>rmStep(step.id)}>−</button>
             </div>
           </div>
         ))}
