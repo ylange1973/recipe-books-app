@@ -821,7 +821,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
             ) : (
               <div key={i.id} className="le-row">
                 <button type="button" title={t.addSection}
-                  style={{background:"none",border:"none",cursor:"pointer",color:THEME.tan,fontSize:".75rem",padding:"0 .2rem",flexShrink:0}}
+                  style={{background:"none",border:"none",cursor:"pointer",color:THEME.brown,fontSize:".95rem",padding:"0 .3rem",flexShrink:0,opacity:0.6}}
                   onClick={()=>insertSectionAbove(i.id)}>÷</button>
                 <input style={{maxWidth:65}} placeholder={t.qty} value={i.amount} onChange={e=>upIng(i.id,"amount",e.target.value)}/>
                 <input style={{maxWidth:55}} placeholder={t.unit} value={i.unit} onChange={e=>upIng(i.id,"unit",e.target.value)}/>
@@ -832,7 +832,6 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
           ))}
           <div style={{display:"flex",gap:".4rem"}}>
             <button type="button" className="le-add" onClick={addIng}>{t.addIngredient}</button>
-            <button type="button" className="le-add" onClick={()=>setIngs([...ings,{id:uid(),type:"section",title:""}])}>{t.addSection}</button>
           </div>
         </div>
       </div>
