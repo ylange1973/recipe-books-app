@@ -784,7 +784,6 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
           </select>
         </div>
       </div>
-      <div className="field"><label>{t.serves}</label><input className="fi" type="number" min="1" max="100" value={serves} onChange={e=>setServes(e.target.value)} placeholder={t.servesPlaceholder} style={{maxWidth:120}}/></div>
       <div className="field" style={{display:"flex",alignItems:"center",gap:"1rem"}}><label style={{minWidth:"fit-content"}}>{t.serves}</label><input className="fi" type="number" min="1" max="100" value={serves} onChange={e=>setServes(e.target.value)} placeholder={t.servesPlaceholder} style={{maxWidth:100}}/></div>
       <div className="field"><label>{t.customTags}</label><TagInput value={tags} onChange={setTags} placeholder={t.tagPh}/></div>
       <div className="divider"/>
@@ -1151,12 +1150,6 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
         <div className="act-row" style={{marginBottom:"1.5rem"}}>
           <button className="btn btn-s btn-sm" onClick={onEdit}>{t.edit}</button>
           {recipe.ownerId===currentUser.id&&<button className="btn btn-d btn-sm" onClick={onDelete}>{t.del}</button>}
-        </div>
-      )}
-      {recipe.serves&&(
-        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:"1rem",padding:".5rem .8rem",background:THEME.warm,borderRadius:8,display:"inline-flex"}}>
-          <span style={{fontSize:"1.1rem"}}>🍽</span>
-          <span style={{fontSize:".95rem",fontWeight:500,color:THEME.darkBrown}}>{t.serves}: {recipe.serves}</span>
         </div>
       )}
       {recipe.serves&&(
