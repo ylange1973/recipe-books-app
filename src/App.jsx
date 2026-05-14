@@ -722,7 +722,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
   };
   useEffect(()=>{ if(saveRef) saveRef.current=handleSave; });
 
-  const others=allUsers.filter(u=>u.id!==currentUser.id);
+  const others=allUsers.filter(u=>u.id!==currentUser.id && u.email!=="guest@myrecipebooks.com");
   return (
     <div>
       <div className="field">
@@ -1150,7 +1150,7 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
                 <span className="step-num">{idx+1}</span>
                 <div className="step-con">
                   <div className="step-txt">{step.text}</div>
-                  {(recipe.steps?.[idx]?.images||[]).filter(i=>i.src).map(img=>(
+                  {(recipe.steps?.find(s=>s.id===step.id)?.images || recipe.steps?.[idx]?.images || []).filter(i=>i.src).map(img=>(
                     <img key={img.id} className="step-img" src={img.src} alt=""/>
                   ))}
                 </div>
@@ -1362,6 +1362,12 @@ export default function App() {
     const isNew=!recipes.find(r=>r.id===recipe.id);
     await fbSaveRecipe(recipe);
     setRecipes(isNew?[...recipes,recipe]:recipes.map(r=>r.id===recipe.id?recipe:r));
+    // Update selRecipe immediately so detail view reflects changes without re-entering
+    if(selRecipe?.id===recipe.id) setSelRecipe(recipe);
+    // Clear translation cache so fresh translations pick up the changes
+    const cache=tcLoad()||{};
+    Object.keys(cache).forEach(k=>{ if(k.startsWith(recipe.id+"__")) delete cache[k]; });
+    tcSave(cache);
     setShowRecipeForm(false); setEditRecipe(null);
     showToast(isNew?t.recipeAdded:t.recipeSaved);
   };
