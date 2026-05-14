@@ -1112,7 +1112,6 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
       .then(tr=>{ const merged={...recipe,...tr}; setDisplay(merged); setTs("done"); const c=tcLoad()||{}; c[ck]=tr; tcSave(c); })
       .catch(e=>{ console.error("[RecipeDetail translate error]", e, e?.message); setDisplay(recipe); setTs("error"); });
   },[recipe.id,lang]);
-  },[recipe.id,lang]);
 
   return (
     <div className="rdetail">
