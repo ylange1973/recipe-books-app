@@ -391,23 +391,14 @@ async function extractAndTranslate(source, type, targetLang) {
 
 async function translateRecipe(recipe, targetLang) {
   const langName = LANGUAGES.find(l=>l.code===targetLang)?.nativeLabel||"English";
-  // Strip units before sending to AI — we translate them via UNIT_DISPLAY instead
-  const ingredientsForAI = (recipe.ingredients||[]).map(i=>({...i, unit:""}));
-  const payload = { name:recipe.name, description:recipe.description, ingredients:ingredientsForAI, steps:recipe.steps, notes:recipe.notes, foodType:recipe.foodType, difficulty:recipe.difficulty };
+  const payload = { name:recipe.name, description:recipe.description, ingredients:recipe.ingredients, steps:recipe.steps, notes:recipe.notes, foodType:recipe.foodType, difficulty:recipe.difficulty };
   const prompt = `Translate this recipe JSON into ${langName}. Return ONLY valid JSON, same structure, no markdown.\n\n${JSON.stringify(payload)}`;
   console.log("[translateRecipe] calling AI, payload size:", JSON.stringify(payload).length);
   const raw = await callAI(prompt);
   console.log("[translateRecipe] raw response:", raw?.slice(0,200));
-  const translated = JSON.parse(raw.replace(/```json|```/g,"").trim());
-  // Restore original units so UNIT_DISPLAY can handle them correctly
-  if(translated.ingredients && recipe.ingredients) {
-    translated.ingredients = translated.ingredients.map((ing, i) => ({
-      ...ing,
-      unit: recipe.ingredients[i]?.unit || ing.unit || ""
-    }));
-  }
-  return translated;
+  return JSON.parse(raw.replace(/```json|```/g,"").trim());
 }
+
 // ── CSS ────────────────────────────────────────────────────────────────────
 const buildCSS = (rtl) => {
   const d = rtl?"rtl":"ltr";
