@@ -619,6 +619,12 @@ function ImageInput({ images=[], onChange, maxImages=10, label="" }) {
         <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={handleFiles}/>
       </div>
       {uploading&&<div style={{fontSize:".8rem",color:THEME.brown,marginBottom:".4rem"}}>⏳ Processing image…</div>}
+      <div style={{display:"flex",gap:".4rem",marginBottom:".4rem"}}>
+        <input className="fi" style={{fontSize:".85rem",padding:".4rem .6rem"}} placeholder="Or paste image URL…"
+          value={urlInp} onChange={e=>setUrlInp(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter"&&urlInp.trim()){ addImg(urlInp.trim(),images.length===0?"header":"inline"); setUrlInp(""); } }}/>
+        <button type="button" className="btn btn-s btn-sm" onClick={()=>{ if(urlInp.trim()){ addImg(urlInp.trim(),images.length===0?"header":"inline"); setUrlInp(""); } }}>+</button>
+      </div>
       {images.length>0&&(
         <div className="img-previews">
           {images.map(img=>(
@@ -872,6 +878,12 @@ function BookImagePicker({ cover, setCover, url, setUrl, t }) {
           <button onClick={()=>setCover(null)} style={{position:"absolute",top:3,right:3,background:"rgba(44,26,14,.7)",color:"#fff",border:"none",borderRadius:"50%",width:20,height:20,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
         </div>
       )}
+      <div style={{fontSize:".72rem",color:THEME.tan,marginBottom:".3rem",fontStyle:"italic"}}>Or paste a URL:</div>
+      <div style={{display:"flex",gap:".4rem"}}>
+        <input className="fi" style={{fontSize:".85rem",padding:".4rem .6rem"}} placeholder={t.pasteUrl} value={url} onChange={e=>setUrl(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter"&&url.trim()){setCover(url.trim());setUrl("");} }}/>
+        <button type="button" className="btn btn-s btn-sm" onClick={()=>{if(url.trim()){setCover(url.trim());setUrl("");}}}>{t.add}</button>
+      </div>
     </div>
   );
 }
@@ -1191,7 +1203,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
     if(lang===origLang){ setDisplay({name:book.name,description:book.description}); return; }
     // Check translation cache
     const cache=tcLoad()||{};
-    const ck=`${selBook.id}__${lang}__card`;
+    const ck=`${book.id}__${lang}`;
     if(cache[ck]){ setDisplay({name:cache[ck].name||book.name,description:cache[ck].description||book.description}); return; }
     // Translate card fields only
     const langName=LANGUAGES.find(l=>l.code===lang)?.nativeLabel||"English";
@@ -1349,12 +1361,9 @@ export default function App() {
     const isNew=!books.find(b=>b.id===book.id);
     await fbSaveBook(book);
     setBooks(isNew?[...books,book]:books.map(b=>b.id===book.id?book:b));
-    // Update selBook immediately if we're editing the currently open book
-    if(selBook?.id===book.id) setSelBook(book);
     setShowBookForm(false); setEditBook(null);
     showToast(isNew?t.bookCreated:t.bookUpdated);
   };
-
   const deleteBook=async id=>{
     if(!confirm(t.delBookConfirm))return;
     await fbDeleteBook(id);
@@ -1436,7 +1445,14 @@ export default function App() {
           )}
 
           {/* Book detail */}
-          {view==="book-detail"&&selBook&&(
+          {view==="book-detail"&&selBook&&(()=>{
+            const bkLang=user?.lang||"en";
+            const bkCache=tcLoad()||{};
+            const bkCk=`${selBook.id}__${bkLang}__card`;
+            const bkNeedsTranslation=bkLang!==(selBook.originalLang||"en");
+            const bkDisplayName=bkNeedsTranslation?(bkCache[bkCk]?.name||selBook.name):selBook.name;
+            const bkDisplayDesc=bkNeedsTranslation?(bkCache[bkCk]?.description||selBook.description):selBook.description;
+            return (
             <div>
               {/* Action bar — full width, always visible */}
               <div style={{background:"#fff",borderBottom:`1px solid ${THEME.parchment}`,padding:".6rem 1rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1452,9 +1468,9 @@ export default function App() {
               <div className="bk-hd">
                 <div className="bk-cover">{selBook.coverImage?<img src={selBook.coverImage} alt=""/>:"📚"}</div>
                 <div style={{flex:1,minWidth:0}}>
-		<div className="bk-name">{(()=>{ const bLang=user?.lang||"en"; const bOrigLang=selBook.originalLang||"en"; if(bLang===bOrigLang) return selBook.name; const bCache=tcLoad()||{}; const bCk=`${selBook.id}__${bLang}__card`; return bCache[bCk]?.name||selBook.name; })()}</div>
-                  		  {selBook.description&&<div className="bk-desc">{(()=>{ const bLang=user?.lang||"en"; const bOrigLang=selBook.originalLang||"en"; if(bLang===bOrigLang) return selBook.description; const bCache=tcLoad()||{}; const bCk=`${selBook.id}__${bLang}__card`; return bCache[bCk]?.description||selBook.description; })()}</div>}
-                <div className="bk-meta">{bookRecipes.length} {bookRecipes.length===1?t.recipeWord:t.recipesWord} · {t.createdBy} {users.find(u=>u.id===selBook.ownerId)?.name||"—"}</div>
+                  <div className="bk-name">{bkDisplayName}</div>
+                  {bkDisplayDesc&&<div className="bk-desc">{bkDisplayDesc}</div>}
+                  <div className="bk-meta">{bookRecipes.length} {bookRecipes.length===1?t.recipeWord:t.recipesWord} · {t.createdBy} {users.find(u=>u.id===selBook.ownerId)?.name||"—"}</div>
                 </div>
               </div>
               <div className="page">
@@ -1467,7 +1483,8 @@ export default function App() {
                   :<div className="grid">{bookRecipes.map(r=><RecipeCard key={r.id} recipe={r} onClick={()=>openRecipe(r)} users={users} userLang={user?.lang||"en"}/>)}</div>}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* List view */}
           {view==="list"&&(
