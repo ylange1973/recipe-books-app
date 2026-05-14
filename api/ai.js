@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
         console.log("[ai.js] page status:", pageRes.status);
 
         if (!pageRes.ok) {
-          return res.status(500).json({ error: `Could not fetch URL (HTTP ${pageRes.status}). Try the Paste Text option instead.` });
+          return res.status(500).json({ error: `Could not access this URL — the website may require login or block automated access (HTTP ${pageRes.status}). Try copying the recipe text and using the Paste Text option instead.` });
         }
 
         const html = await pageRes.text();
@@ -47,18 +47,19 @@ module.exports = async function handler(req, res) {
           .trim()
           .slice(0, 12000);
 
-        console.log("[ai.js] text length:", text.length);
+        console.log("[ai.js] extracted text length:", text.length);
         console.log("[ai.js] text preview:", text.slice(0, 200));
 
         if (text.length < 100) {
-          return res.status(500).json({ error: "Page fetched but no readable text found. Try Paste Text instead." });
+          return res.status(500).json({ error: "Page fetched but no readable content found — the site may use JavaScript to load content. Try copying the recipe text and using the Paste Text option instead." });
         }
 
         finalPrompt = prompt + "\n\nPage content:\n" + text;
+        console.log("[ai.js] finalPrompt length:", finalPrompt.length);
 
       } catch (fetchErr) {
         console.log("[ai.js] fetch error:", fetchErr.message);
-        return res.status(500).json({ error: "Could not fetch URL: " + fetchErr.message + ". Try Paste Text instead." });
+        return res.status(500).json({ error: "Could not access this URL — the website may be blocking automated access. Try copying the recipe text and using the Paste Text option instead." });
       }
     }
 
@@ -95,7 +96,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ text });
 
   } catch (e) {
-    console.log("[ai.js] error:", e.message);
+    console.log("[ai.js] top-level error:", e.message);
     return res.status(500).json({ error: e.message });
   }
-};
+}

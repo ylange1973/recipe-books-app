@@ -458,7 +458,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .card-cover{height:130px;background:${THEME.parchment};display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .card-cover img,.card-rimg img{width:100%;height:100%;object-fit:cover;}
 .card-body{padding:1rem 1.1rem;}
-.card-name{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;color:${THEME.espresso};margin-bottom:.3rem;}
+.card-name{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;color:${THEME.espresso};margin-bottom:.3rem;word-break:break-word;overflow-wrap:break-word;}
 .card-desc{font-size:.82rem;color:${THEME.brown};font-family:'Lora',serif;font-style:italic;line-height:1.4;}
 .card-meta{display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;padding-top:.7rem;border-top:1px solid ${THEME.parchment};}
 .card-count{font-size:.78rem;color:${THEME.tan};}
@@ -482,7 +482,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 /* Recipe detail */
 .rdetail{max-width:780px;margin:0 auto;padding:2rem;}
 .rhero{width:100%;max-height:340px;object-fit:cover;border-radius:10px;margin-bottom:1.5rem;}
-.rtitle{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:${THEME.espresso};line-height:1.2;margin-bottom:.6rem;}
+.rtitle{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:${THEME.espresso};line-height:1.2;margin-bottom:.6rem;word-break:break-word;overflow-wrap:break-word;}
 .rdesc{font-family:'Lora',serif;font-style:italic;color:${THEME.brown};font-size:1.05rem;line-height:1.6;margin-bottom:1rem;}
 .rmeta-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;}
 .rsource{font-size:.82rem;color:${THEME.tan};font-style:italic;}
@@ -811,7 +811,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
             <div style={{marginTop:".4rem"}}><ImageInput images={step.images||[]} onChange={imgs=>upStep(step.id,"images",imgs)} maxImages={3} label={t.stepImage}/></div>
             <div style={{display:"flex",gap:".4rem",marginTop:".4rem"}}>
               <button type="button" className="btn btn-s btn-sm" onClick={()=>insertStepAfter(step.id)}>{t.insertStep}</button>
-              <button type="button" className="btn btn-d btn-sm" onClick={()=>rmStep(step.id)}>−</button>
+              {steps.length>1&&<button type="button" className="btn btn-d btn-sm" onClick={()=>rmStep(step.id)}>−</button>}
             </div>
           </div>
         ))}
