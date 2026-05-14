@@ -1452,9 +1452,9 @@ export default function App() {
               <div className="bk-hd">
                 <div className="bk-cover">{selBook.coverImage?<img src={selBook.coverImage} alt=""/>:"📚"}</div>
                 <div style={{flex:1,minWidth:0}}>
-                <div className="bk-name">{(()=>{ const lang=user?.lang||"en"; const origLang=selBook.originalLang||"en"; if(lang===origLang) return selBook.name; const cache=tcLoad()||{}; const ck=`${selBook.id}__${lang}__card`; return cache[ck]?.name||selBook.name; })()}</div>
-                {selBook.description&&<div className="bk-desc">{(()=>{ const lang=user?.lang||"en"; const origLang=selBook.originalLang||"en"; if(lang===origLang) return selBook.description; const cache=tcLoad()||{}; const ck=`${selBook.id}__${lang}__card`; return cache[ck]?.description||selBook.description; })()}</div>}
-                  <div className="bk-meta">{bookRecipes.length} {bookRecipes.length===1?t.recipeWord:t.recipesWord} · {t.createdBy} {users.find(u=>u.id===selBook.ownerId)?.name||"—"}</div>
+		<div className="bk-name">{(()=>{ const bLang=user?.lang||"en"; const bOrigLang=selBook.originalLang||"en"; if(bLang===bOrigLang) return selBook.name; const bCache=tcLoad()||{}; const bCk=`${selBook.id}__${bLang}__card`; return bCache[bCk]?.name||selBook.name; })()}</div>
+                  		  {selBook.description&&<div className="bk-desc">{(()=>{ const bLang=user?.lang||"en"; const bOrigLang=selBook.originalLang||"en"; if(bLang===bOrigLang) return selBook.description; const bCache=tcLoad()||{}; const bCk=`${selBook.id}__${bLang}__card`; return bCache[bCk]?.description||selBook.description; })()}</div>}
+                <div className="bk-meta">{bookRecipes.length} {bookRecipes.length===1?t.recipeWord:t.recipesWord} · {t.createdBy} {users.find(u=>u.id===selBook.ownerId)?.name||"—"}</div>
                 </div>
               </div>
               <div className="page">
