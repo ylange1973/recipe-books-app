@@ -1084,7 +1084,7 @@ function parseIngredient(ing, lang="en") {
 
 
 // ── Recipe Detail ──────────────────────────────────────────────────────────
-function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers, books, t, isGuest=false }) {
+function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest=false }) {
   const canEdit=!isGuest&&(recipe.ownerId===currentUser.id||recipe.editPerms?.includes(currentUser.id));
   const owner=allUsers.find(u=>u.id===recipe.ownerId);
   const rBooks=books.filter(b=>recipe.bookIds?.includes(b.id));
@@ -1101,6 +1101,8 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
     if(!isGuest){
       const updated={...recipe,meta:{...recipe.meta,timesOpened:(recipe.meta?.timesOpened||0)+1,lastOpened:now()}};
       fbSaveRecipe(updated).catch(()=>{});
+      // Update the recipe in parent state so count reflects immediately
+      onTrackOpen(updated);
     }
     if(!needsTrans){ setDisplay(recipe); setTs("none"); return; }
     const cache=tcLoad()||{}; const ck=`${recipe.id}__${lang}`;
@@ -1456,6 +1458,7 @@ export default function App() {
               onBack={()=>{ setView(selBook?"book-detail":"list"); setSelRecipe(null); }}
               onEdit={()=>{ setEditRecipe(selRecipe); setShowRecipeForm(true); }}
               onDelete={()=>deleteRecipe(selRecipe.id)}
+              onTrackOpen={updated=>{ setSelRecipe(updated); setRecipes(recipes.map(r=>r.id===updated.id?updated:r)); }}
               currentUser={user} allUsers={users} books={books} t={t} isGuest={isGuest}/>
           )}
 
