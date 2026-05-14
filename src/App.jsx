@@ -393,7 +393,9 @@ async function translateRecipe(recipe, targetLang) {
   const langName = LANGUAGES.find(l=>l.code===targetLang)?.nativeLabel||"English";
   const payload = { name:recipe.name, description:recipe.description, ingredients:recipe.ingredients, steps:recipe.steps, notes:recipe.notes, foodType:recipe.foodType, difficulty:recipe.difficulty };
   const prompt = `Translate this recipe JSON into ${langName}. Return ONLY valid JSON, same structure, no markdown.\n\n${JSON.stringify(payload)}`;
+  console.log("[translateRecipe] calling AI, payload size:", JSON.stringify(payload).length);
   const raw = await callAI(prompt);
+  console.log("[translateRecipe] raw response:", raw?.slice(0,200));
   return JSON.parse(raw.replace(/```json|```/g,"").trim());
 }
 
@@ -1092,7 +1094,7 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, currentUser, allUsers,
     setTs("loading");
     translateRecipe(recipe,lang)
       .then(tr=>{ const merged={...recipe,...tr}; setDisplay(merged); setTs("done"); const c=tcLoad()||{}; c[ck]=tr; tcSave(c); })
-      .catch(()=>{ setDisplay(recipe); setTs("error"); });
+      .catch(e=>{ console.error("[RecipeDetail translate error]", e, e?.message); setDisplay(recipe); setTs("error"); });
   },[recipe.id,lang]);
 
   return (
