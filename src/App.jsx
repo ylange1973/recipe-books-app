@@ -1270,13 +1270,16 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
         {display.difficulty&&<span className="tag tag-d">{display.difficulty}</span>}
         {(recipe.customTags||[]).map(tg=><span key={tg} className="tag tag-c">{tg}</span>)}
       </div>
+      <div style={{display:"flex",alignItems:"center",gap:".6rem",marginBottom:".4rem",flexWrap:"wrap"}}>
+        {recipe.isPrivate&&<div style={{display:"inline-flex",alignItems:"center",gap:".3rem",fontSize:".78rem",color:THEME.brown,padding:".2rem .6rem",background:THEME.warm,borderRadius:6,border:`1px solid ${THEME.tan}`}}>🔒 {t.privateRecipeHint}</div>}
+        {onLike&&!isGuest&&<button type="button" onClick={e=>onLike(recipe.id,e)}
+          style={{background:"none",border:"none",cursor:"pointer",fontSize:"1.1rem",display:"flex",alignItems:"center",gap:".3rem",color:isLiked?"#e74c3c":THEME.tan,padding:0}}>
+          <span style={{fontSize:"1.2rem"}}>{isLiked?"♥":"♡"}</span>
+          <span style={{fontSize:".85rem",color:THEME.brown}}>{likeCount>0?likeCount:""}</span>
+        </button>}
+      </div>
       <h1 className="rtitle">{display.name}</h1>
       {display.description&&<p className="rdesc">{display.description}</p>}
-      {recipe.isPrivate&&<div style={{display:"inline-flex",alignItems:"center",gap:".4rem",fontSize:".82rem",color:THEME.brown,marginBottom:".5rem",padding:".3rem .7rem",background:THEME.warm,borderRadius:6}}>🔒 {t.privateRecipeHint}</div>}
-      {onLike&&!isGuest&&<button type="button" onClick={e=>onLike(recipe.id,e)}
-        style={{background:"none",border:"none",cursor:"pointer",fontSize:"1.3rem",display:"flex",alignItems:"center",gap:".4rem",color:isLiked?"#e74c3c":THEME.tan,marginBottom:".8rem",padding:0}}>
-        {isLiked?"❤️":"🤍"}<span style={{fontSize:".9rem",color:THEME.brown}}>{likeCount>0?likeCount:""}</span>
-      </button>}
       {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage}}>{recipe.source.url}</a></div>}
       {recipe.source?.type==="image"&&<div className="rsource">{t.sourcePhoto}</div>}
       {rBooks.length>0&&<div style={{marginTop:".5rem",display:"flex",gap:".3rem",flexWrap:"wrap"}}>{rBooks.map(b=><span key={b.id} style={{fontSize:".78rem",background:THEME.parchment,padding:".1rem .5rem",borderRadius:10,color:THEME.darkBrown}}>📚 {b.name}</span>)}</div>}
@@ -1435,7 +1438,7 @@ function RecipeCard({ recipe, onClick, users, userLang, likeCount=0, isLiked=fal
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:".78rem",color:THEME.sage}}>{owner?.name||""}</span>
           <div style={{display:"flex",alignItems:"center",gap:".4rem"}}>
-            {likeCount>0&&<span style={{fontSize:".78rem",display:"flex",alignItems:"center",gap:".15rem",color:isLiked?"#e74c3c":THEME.tan}}>{isLiked?"❤️":"🤍"} {likeCount}</span>}
+            {likeCount>0&&<span style={{fontSize:".78rem",display:"flex",alignItems:"center",gap:".15rem",color:isLiked?"#e74c3c":THEME.tan}}>{isLiked?"♥":"♡"} {likeCount}</span>}
             <span style={{fontSize:".78rem",color:THEME.tan}}>{recipe.isPrivate?"🔒":recipe.source?.type==="url"?"🔗":recipe.source?.type==="image"?"🖼":""}</span>
           </div>
         </div>
