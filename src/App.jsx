@@ -1491,8 +1491,10 @@ export default function App() {
   }, []);
 
   async function loadData() {
-    const [bks, recs, usrs, lks] = await Promise.all([fbGetBooks(), fbGetRecipes(), fbGetAllUsers(), fbGetLikes()]);
-    setBooks(bks); setRecipes(recs); setUsers(usrs); setLikes(lks);
+    const [bks, recs, usrs] = await Promise.all([fbGetBooks(), fbGetRecipes(), fbGetAllUsers()]);
+    setBooks(bks); setRecipes(recs); setUsers(usrs);
+    // Load likes separately so failure doesn't block the app
+    fbGetLikes().then(lks => setLikes(lks)).catch(e => console.warn("likes load failed:", e.message));
   }
 
   const t = user ? T[user.lang||"en"] : T.en;
