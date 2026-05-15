@@ -1,0 +1,123 @@
+import { useState, useEffect } from "react";
+import { THEME, LANGUAGES, GUEST_EMAIL } from "../constants.js";
+import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
+import { translateRecipe } from "../ai.js";
+import { fbSaveRecipe } from "../firestore.js";
+
+export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest = false, likeCount = 0, isLiked = false, onLike }) {
+  const canEdit = !isGuest && (recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id));
+  const owner = allUsers.find(u => u.id === recipe.ownerId);
+  const rBooks = books.filter(b => recipe.bookIds?.includes(b.id));
+  const headerImg = recipe.images?.find(i => i.role === "header") || recipe.images?.[0];
+  const lang = currentUser.lang || "en";
+  const needsTrans = lang !== (recipe.originalLang || "en");
+  const [display, setDisplay] = useState(recipe);
+  const [ts, setTs] = useState("pending");
+
+  useEffect(() => {
+    console.log("[RecipeDetail] lang:", lang, "originalLang:", recipe.originalLang, "needsTrans:", needsTrans, "recipeId:", recipe.id);
+    if (!isGuest) {
+      const updated = { ...recipe, meta: { ...recipe.meta, timesOpened: (recipe.meta?.timesOpened || 0) + 1, lastOpened: now() } };
+      fbSaveRecipe(updated).catch(() => {});
+      onTrackOpen(updated);
+    }
+    if (!needsTrans) { setDisplay(recipe); setTs("none"); return; }
+    setTs("loading");
+    const cache = tcLoad() || {}; const ck = `${recipe.id}__${lang}`;
+    console.log("[RecipeDetail] cache key:", ck, "cached:", !!cache[ck], "has ingredients:", !!cache[ck]?.ingredients);
+    if (cache[ck]?.ingredients) { setDisplay({ ...recipe, ...cache[ck] }); setTs("done"); return; }
+    if (cache[ck]) { delete cache[ck]; tcSave(cache); }
+    translateRecipe(recipe, lang)
+      .then(tr => { const merged = { ...recipe, ...tr }; setDisplay(merged); setTs("done"); const c = tcLoad() || {}; c[ck] = tr; tcSave(c); })
+      .catch(e => { console.error("[RecipeDetail translate error]", e, e?.message); setDisplay(recipe); setTs("error"); });
+  }, [recipe.id, lang]);
+
+  return (
+    <div className="rdetail">
+      <button className="back-btn" onClick={onBack}>{t.back}</button>
+      {ts === "loading" && <div className="trans-banner"><span className="spinner" />{t.translating}</div>}
+      {ts === "done" && needsTrans && <div className="trans-banner" style={{ background: "#f0f7ed", borderColor: THEME.sage }}>✓ {t.translated} ({LANGUAGES.find(l => l.code === lang)?.nativeLabel})</div>}
+      {ts === "error" && <div className="trans-banner" style={{ background: "#fff3f0", borderColor: THEME.rust }}>⚠️ {t.transError}</div>}
+      {headerImg && <img className="rhero" src={headerImg.src} alt={display.name} />}
+      <div className="rmeta-row">
+        {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
+        {display.difficulty && <span className="tag tag-d">{display.difficulty}</span>}
+        {(recipe.customTags || []).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: ".6rem", marginBottom: ".4rem", flexWrap: "wrap" }}>
+        {recipe.isPrivate && <div style={{ display: "inline-flex", alignItems: "center", gap: ".3rem", fontSize: ".78rem", color: THEME.brown, padding: ".2rem .6rem", background: THEME.warm, borderRadius: 6, border: `1px solid ${THEME.tan}` }}>🔒 {t.privateRecipeHint}</div>}
+        {onLike && !isGuest && <button type="button" onClick={e => onLike(recipe.id, e)}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: ".3rem", color: isLiked ? "#e74c3c" : THEME.tan, padding: 0 }}>
+          <span style={{ fontSize: "1.2rem" }}>{isLiked ? "♥" : "♡"}</span>
+          <span style={{ fontSize: ".85rem", color: THEME.brown }}>{likeCount > 0 ? likeCount : ""}</span>
+        </button>}
+      </div>
+      <h1 className="rtitle">{display.name}</h1>
+      {display.description && <p className="rdesc">{display.description}</p>}
+      {recipe.source?.url && <div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{ color: THEME.sage, textDecoration: "none" }}>🔗 {(() => { try { return new URL(recipe.source.url).hostname.replace(/^www\./, ""); } catch { return recipe.source.url.slice(0, 40) + "…"; } })()}</a></div>}
+      {recipe.source?.type === "image" && <div className="rsource">{t.sourcePhoto}</div>}
+      {rBooks.length > 0 && <div style={{ marginTop: ".5rem", display: "flex", gap: ".3rem", flexWrap: "wrap" }}>{rBooks.map(b => <span key={b.id} style={{ fontSize: ".78rem", background: THEME.parchment, padding: ".1rem .5rem", borderRadius: 10, color: THEME.darkBrown }}>📚 {b.name}</span>)}</div>}
+      <div className="stat-row" style={{ marginTop: "1rem" }}>
+        <div className="stat"><strong>{t.createdBy}</strong>{owner?.name || "—"}</div>
+        <div className="stat"><strong>{t.created}</strong>{recipe.meta?.createdAt ? new Date(recipe.meta.createdAt).toLocaleDateString() : "—"}</div>
+        <div className="stat"><strong>{t.lastEdited}</strong>{recipe.meta?.lastEdited ? new Date(recipe.meta.lastEdited).toLocaleDateString() : "—"}</div>
+        <div className="stat"><strong>{t.timesOpened}</strong>{recipe.meta?.timesOpened || 0}</div>
+        <div className="stat"><strong>{t.lastOpened}</strong>{recipe.meta?.lastOpened ? new Date(recipe.meta.lastOpened).toLocaleDateString() : "—"}</div>
+      </div>
+      {canEdit && (
+        <div className="act-row" style={{ marginBottom: "1.5rem" }}>
+          <button className="btn btn-s btn-sm" onClick={onEdit}>{t.edit}</button>
+          {recipe.ownerId === currentUser.id && <button className="btn btn-d btn-sm" onClick={onDelete}>{t.del}</button>}
+        </div>
+      )}
+      {recipe.serves && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: ".5rem", marginBottom: "1rem", padding: ".4rem .9rem", background: THEME.warm, borderRadius: 8 }}>
+          <span style={{ fontSize: "1rem" }}>🍽</span>
+          <span style={{ fontSize: ".95rem", fontWeight: 500, color: THEME.darkBrown }}>{t.serves}: {recipe.serves}</span>
+        </div>
+      )}
+      {display.ingredients?.length > 0 && (
+        <div className="rsec">
+          <div className="rsec-title">{t.ingredients}</div>
+          <ul className="ing-list">
+            {display.ingredients.map((ing, i) => (
+              ing.type === "section" ? (
+                <li key={ing.id || i} style={{ listStyle: "none", padding: ".6rem 0 .2rem", borderBottom: `2px solid ${THEME.tan}`, fontWeight: 600, fontSize: ".9rem", color: THEME.brown, fontStyle: "italic" }}>
+                  {ing.title}
+                </li>
+              ) : (
+                <li key={ing.id || i} className="ing-item">
+                  {(() => { const { qty, unit } = parseIngredient(ing, currentUser?.lang || "en"); return (<><span className="ing-qty">{qty}</span><span className="ing-unit">{unit}</span><span className="ing-name">{ing.name}</span></>); })()}
+                </li>
+              )
+            ))}
+          </ul>
+        </div>
+      )}
+      {display.steps?.length > 0 && (
+        <div className="rsec">
+          <div className="rsec-title">{t.steps}</div>
+          <ol className="step-list">
+            {display.steps.map((step, idx) => (
+              <li key={step.id || idx} className="step-item">
+                <span className="step-num">{idx + 1}</span>
+                <div className="step-con">
+                  <div className="step-txt">{step.text}</div>
+                  {(recipe.steps?.find(s => s.id === step.id)?.images || recipe.steps?.[idx]?.images || []).filter(i => i.src).map(img => (
+                    <img key={img.id} className="step-img" src={img.src} alt="" />
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {display.notes && (
+        <div className="rsec">
+          <div className="rsec-title">{t.notes}</div>
+          <div className="notes-box">{display.notes}</div>
+        </div>
+      )}
+    </div>
+  );
+}
