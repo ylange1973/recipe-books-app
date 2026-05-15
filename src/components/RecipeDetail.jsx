@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { THEME, LANGUAGES, GUEST_EMAIL } from "../constants.js";
 import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
 import { translateRecipe } from "../ai.js";
-import { fbSaveRecipe } from "../firestore.js";
+import { fbSaveRecipe, fbGetTranslation, fbSaveTranslation } from "../firestore.js";
 
 export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest = false, likeCount = 0, isLiked = false, onLike }) {
   const canEdit = !isGuest && (recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id));
@@ -15,21 +15,64 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
   const [ts, setTs] = useState("pending");
 
   useEffect(() => {
-    console.log("[RecipeDetail] lang:", lang, "originalLang:", recipe.originalLang, "needsTrans:", needsTrans, "recipeId:", recipe.id);
     if (!isGuest) {
       const updated = { ...recipe, meta: { ...recipe.meta, timesOpened: (recipe.meta?.timesOpened || 0) + 1, lastOpened: now() } };
       fbSaveRecipe(updated).catch(() => {});
       onTrackOpen(updated);
     }
     if (!needsTrans) { setDisplay(recipe); setTs("none"); return; }
-    setTs("loading");
-    const cache = tcLoad() || {}; const ck = `${recipe.id}__${lang}`;
-    console.log("[RecipeDetail] cache key:", ck, "cached:", !!cache[ck], "has ingredients:", !!cache[ck]?.ingredients);
-    if (cache[ck]?.ingredients) { setDisplay({ ...recipe, ...cache[ck] }); setTs("done"); return; }
-    if (cache[ck]) { delete cache[ck]; tcSave(cache); }
-    translateRecipe(recipe, lang)
-      .then(tr => { const merged = { ...recipe, ...tr }; setDisplay(merged); setTs("done"); const c = tcLoad() || {}; c[ck] = tr; tcSave(c); })
-      .catch(e => { console.error("[RecipeDetail translate error]", e, e?.message); setDisplay(recipe); setTs("error"); });
+
+    const ck = `${recipe.id}__${lang}`;
+
+    async function loadTranslation() {
+      setTs("loading");
+
+      // 1. Check localStorage cache first
+      const cache = tcLoad() || {};
+      if (cache[ck]?.ingredients && !cache[ck]?.stale) {
+        setDisplay({ ...recipe, ...cache[ck] });
+        setTs(cache[ck].stale ? "stale" : "done");
+        return;
+      }
+
+      // 2. Check Firestore
+      const fbTr = await fbGetTranslation(recipe.id, lang);
+      if (fbTr?.ingredients) {
+        // Update localStorage cache
+        const c = tcLoad() || {};
+        c[ck] = fbTr;
+        tcSave(c);
+        setDisplay({ ...recipe, ...fbTr });
+        setTs(fbTr.stale ? "stale" : "done");
+        return;
+      }
+
+      // 3. Fall back to AI translation
+      try {
+        const tr = await translateRecipe(recipe, lang);
+        // Store text-only fields in Firestore
+        const toStore = {
+          name: tr.name, description: tr.description,
+          foodType: tr.foodType, difficulty: tr.difficulty, notes: tr.notes,
+          ingredients: (tr.ingredients || []).map(i => i.type === "section"
+            ? { id: i.id, type: "section", title: i.title }
+            : { id: i.id, type: "ingredient", name: i.name }),
+          steps: (tr.steps || []).map(s => ({ id: s.id, text: s.text })),
+          stale: false,
+        };
+        await fbSaveTranslation(recipe.id, lang, toStore);
+        // Cache in localStorage
+        const c = tcLoad() || {}; c[ck] = toStore; tcSave(c);
+        setDisplay({ ...recipe, ...tr });
+        setTs("done");
+      } catch (e) {
+        console.error("[RecipeDetail translate error]", e?.message);
+        setDisplay(recipe);
+        setTs("error");
+      }
+    }
+
+    loadTranslation();
   }, [recipe.id, lang]);
 
   return (
@@ -37,6 +80,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       <button className="back-btn" onClick={onBack}>{t.back}</button>
       {ts === "loading" && <div className="trans-banner"><span className="spinner" />{t.translating}</div>}
       {ts === "done" && needsTrans && <div className="trans-banner" style={{ background: "#f0f7ed", borderColor: THEME.sage }}>✓ {t.translated} ({LANGUAGES.find(l => l.code === lang)?.nativeLabel})</div>}
+      {ts === "stale" && needsTrans && <div className="trans-banner" style={{ background: "#fff8e6", borderColor: THEME.gold }}>⚠️ {t.transStale || "This translation may be outdated"}{canEdit && <span style={{ marginLeft: ".5rem", fontSize: ".8rem", color: THEME.brown }}>— edit to review and update</span>}</div>}
       {ts === "error" && <div className="trans-banner" style={{ background: "#fff3f0", borderColor: THEME.rust }}>⚠️ {t.transError}</div>}
       {headerImg && <img className="rhero" src={headerImg.src} alt={display.name} />}
       <div className="rmeta-row">

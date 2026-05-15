@@ -57,6 +57,34 @@ export async function fbGetLikes() {
   }
 }
 
+// ── Translations ─────────────────────────────────────────────────────────────
+
+export async function fbGetTranslation(recipeId, langCode) {
+  try {
+    const snap = await getDoc(doc(db, "recipes", recipeId, "translations", langCode));
+    return snap.exists() ? snap.data() : null;
+  } catch (e) {
+    console.warn("fbGetTranslation failed:", e.message);
+    return null;
+  }
+}
+
+export async function fbSaveTranslation(recipeId, langCode, data) {
+  await setDoc(doc(db, "recipes", recipeId, "translations", langCode), { ...data, stale: false, savedAt: new Date().toISOString() });
+}
+
+export async function fbMarkTranslationsStale(recipeId) {
+  const LANGS = ["en", "he", "fr", "es", "it"];
+  await Promise.all(LANGS.map(async langCode => {
+    try {
+      const snap = await getDoc(doc(db, "recipes", recipeId, "translations", langCode));
+      if (snap.exists()) {
+        await setDoc(doc(db, "recipes", recipeId, "translations", langCode), { ...snap.data(), stale: true }, { merge: true });
+      }
+    } catch {}
+  }));
+}
+
 export async function fbToggleLike(recipeId, userId) {
   const snap = await getDocs(likesCol());
   const existing = snap.docs.find(d => d.data().recipeId === recipeId && d.data().userId === userId);

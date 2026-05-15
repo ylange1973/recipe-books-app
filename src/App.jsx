@@ -4,7 +4,7 @@ import { auth } from "./firebase.js";
 import { THEME, LANGUAGES, T, GUEST_EMAIL } from "./constants.js";
 import { uid, now, tcLoad, tcSave } from "./utils.js";
 import { buildCSS } from "./styles.js";
-import { fbGetUser, fbSaveUser, fbGetBooks, fbSaveBook, fbDeleteBook, fbGetRecipes, fbSaveRecipe, fbDeleteRecipe, fbGetAllUsers, fbGetLikes, fbToggleLike } from "./firestore.js";
+import { fbGetUser, fbSaveUser, fbGetBooks, fbSaveBook, fbDeleteBook, fbGetRecipes, fbSaveRecipe, fbDeleteRecipe, fbGetAllUsers, fbGetLikes, fbToggleLike, fbMarkTranslationsStale } from "./firestore.js";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Toast from "./components/Toast.jsx";
 import BookCard from "./components/BookCard.jsx";
@@ -118,9 +118,13 @@ export default function App() {
     await fbSaveRecipe(recipe);
     setRecipes(isNew ? [...recipes, recipe] : recipes.map(r => r.id === recipe.id ? recipe : r));
     if (selRecipe?.id === recipe.id) setSelRecipe(recipe);
-    const cache = tcLoad() || {};
-    Object.keys(cache).forEach(k => { if (k.startsWith(recipe.id + "__")) delete cache[k]; });
-    tcSave(cache);
+    // If editing an existing recipe, mark all translations stale and clear localStorage cache
+    if (!isNew) {
+      fbMarkTranslationsStale(recipe.id).catch(() => {});
+      const cache = tcLoad() || {};
+      Object.keys(cache).forEach(k => { if (k.startsWith(recipe.id + "__")) delete cache[k]; });
+      tcSave(cache);
+    }
     setShowRecipeForm(false); setEditRecipe(null);
     if (!isNew && selRecipe?.id === recipe.id) setView("recipe-detail");
     showToast(isNew ? t.recipeAdded : t.recipeSaved);
