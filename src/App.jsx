@@ -4,7 +4,7 @@ import { auth } from "./firebase.js";
 import { THEME, LANGUAGES, T, GUEST_EMAIL } from "./constants.js";
 import { uid, now, tcLoad, tcSave } from "./utils.js";
 import { buildCSS } from "./styles.js";
-import { fbGetUser, fbSaveUser, fbGetBooks, fbSaveBook, fbDeleteBook, fbGetRecipes, fbSaveRecipe, fbDeleteRecipe, fbGetAllUsers, fbGetLikes, fbToggleLike, fbMarkTranslationsStale } from "./firestore.js";
+import { fbGetUser, fbSaveUser, fbGetBooks, fbSaveBook, fbDeleteBook, fbGetRecipes, fbSaveRecipe, fbDeleteRecipe, fbGetAllUsers, fbGetLikes, fbToggleLike, fbMarkTranslationsStale, fbSaveTranslation } from "./firestore.js";
 import LoginScreen from "./components/LoginScreen.jsx";
 import Toast from "./components/Toast.jsx";
 import BookCard from "./components/BookCard.jsx";
@@ -114,19 +114,45 @@ export default function App() {
   };
 
   const saveRecipe = async recipe => {
-    const isNew = !recipes.find(r => r.id === recipe.id);
-    await fbSaveRecipe(recipe);
-    setRecipes(isNew ? [...recipes, recipe] : recipes.map(r => r.id === recipe.id ? recipe : r));
-    if (selRecipe?.id === recipe.id) setSelRecipe(recipe);
+    const isTranslationEdit = !!recipe._isTranslationEdit;
+    const translationLang = recipe._translationLang;
+    // Strip internal flags before saving
+    const { _isTranslationEdit, _translationLang, ...cleanRecipe } = recipe;
+
+    if (isTranslationEdit) {
+      // Save corrected translation only — don't touch original recipe
+      const toStore = {
+        name: cleanRecipe.name, description: cleanRecipe.description,
+        foodType: cleanRecipe.foodType, difficulty: cleanRecipe.difficulty, notes: cleanRecipe.notes,
+        ingredients: (cleanRecipe.ingredients || []).map(i => i.type === "section"
+          ? { id: i.id, type: "section", title: i.title }
+          : { id: i.id, type: "ingredient", name: i.name }),
+        steps: (cleanRecipe.steps || []).map(s => ({ id: s.id, text: s.text })),
+        stale: false,
+      };
+      await fbSaveTranslation(cleanRecipe.id, translationLang, toStore);
+      // Update localStorage cache
+      const c = tcLoad() || {};
+      c[`${cleanRecipe.id}__${translationLang}`] = toStore;
+      tcSave(c);
+      setShowRecipeForm(false); setEditRecipe(null);
+      showToast(t.recipeSaved);
+      return;
+    }
+
+    const isNew = !recipes.find(r => r.id === cleanRecipe.id);
+    await fbSaveRecipe(cleanRecipe);
+    setRecipes(isNew ? [...recipes, cleanRecipe] : recipes.map(r => r.id === cleanRecipe.id ? cleanRecipe : r));
+    if (selRecipe?.id === cleanRecipe.id) setSelRecipe(cleanRecipe);
     // If editing an existing recipe, mark all translations stale and clear localStorage cache
     if (!isNew) {
-      fbMarkTranslationsStale(recipe.id).catch(() => {});
+      fbMarkTranslationsStale(cleanRecipe.id).catch(() => {});
       const cache = tcLoad() || {};
-      Object.keys(cache).forEach(k => { if (k.startsWith(recipe.id + "__")) delete cache[k]; });
+      Object.keys(cache).forEach(k => { if (k.startsWith(cleanRecipe.id + "__")) delete cache[k]; });
       tcSave(cache);
     }
     setShowRecipeForm(false); setEditRecipe(null);
-    if (!isNew && selRecipe?.id === recipe.id) setView("recipe-detail");
+    if (!isNew && selRecipe?.id === cleanRecipe.id) setView("recipe-detail");
     showToast(isNew ? t.recipeAdded : t.recipeSaved);
   };
 
@@ -196,7 +222,24 @@ export default function App() {
           {view === "recipe-detail" && selRecipe && (
             <RecipeDetail recipe={selRecipe}
               onBack={() => { setView(selBook ? "book-detail" : "list"); setSelRecipe(null); }}
-              onEdit={() => { setEditRecipe(selRecipe); setShowRecipeForm(true); }}
+              onEdit={() => {
+                const lang = user?.lang || "en";
+                const needsTrans = lang !== (selRecipe.originalLang || "en");
+                if (needsTrans) {
+                  const cache = tcLoad() || {};
+                  const ck = `${selRecipe.id}__${lang}`;
+                  const tr = cache[ck];
+                  if (tr?.ingredients) {
+                    // Merge translated text fields over original recipe for the form
+                    setEditRecipe({ ...selRecipe, ...tr, _isTranslationEdit: true, _translationLang: lang });
+                  } else {
+                    setEditRecipe(selRecipe);
+                  }
+                } else {
+                  setEditRecipe(selRecipe);
+                }
+                setShowRecipeForm(true);
+              }}
               onDelete={() => deleteRecipe(selRecipe.id)}
               onTrackOpen={updated => { setSelRecipe(updated); setRecipes(recipes.map(r => r.id === updated.id ? updated : r)); }}
               likeCount={likes.filter(l => l.recipeId === selRecipe?.id).length}
