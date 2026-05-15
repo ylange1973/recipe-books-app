@@ -309,8 +309,13 @@ async function fbGetAllUsers() {
 const likesCol = () => collection(db, "likes");
 
 async function fbGetLikes() {
-  const snap = await getDocs(likesCol());
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const snap = await getDocs(likesCol());
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    console.warn("fbGetLikes failed:", e.message);
+    return [];
+  }
 }
 async function fbToggleLike(recipeId, userId) {
   // Check if like exists
