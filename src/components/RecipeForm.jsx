@@ -93,7 +93,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       notes, serves, isPrivate, images, bookIds,
       source: { type: srcType, url: srcType === "url" ? srcUrl : "", imageThumb: extImgSrc || "" },
       ownerId: initial?.ownerId || currentUser.id,
-      originalLang: currentUser.lang || "en",
+      originalLang: initial?.originalLang || currentUser.lang || "en",
       editPerms: perms,
       meta: { createdAt: initial?.meta?.createdAt || now(), lastEdited: now(), timesOpened: initial?.meta?.timesOpened || 0, lastOpened: initial?.meta?.lastOpened || null }
     });
