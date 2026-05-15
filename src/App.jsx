@@ -880,7 +880,14 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
         </div>}
       </div>
       <div className="divider"/>
-      <div className="field"><label>{t.recipeName}</label><input className="fi" value={name} onChange={e=>setName(e.target.value)} placeholder={t.recipeNamePh}/></div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:".8rem"}}>
+        <div style={{flex:1}}><label style={{display:"block",fontSize:".78rem",fontWeight:600,color:THEME.darkBrown,marginBottom:".3rem",textTransform:"uppercase",letterSpacing:".05em"}}>{t.recipeName}</label><input className="fi" style={{margin:0}} value={name} onChange={e=>setName(e.target.value)} placeholder={t.recipeNamePh}/></div>
+        <label style={{display:"flex",alignItems:"center",gap:".4rem",cursor:"pointer",marginLeft:"1rem",flexShrink:0,fontSize:".85rem",color:THEME.brown}}>
+          <input type="checkbox" checked={isPrivate} onChange={e=>setIsPrivate(e.target.checked)}
+            style={{accentColor:THEME.rust,width:16,height:16,cursor:"pointer"}}/>
+          🔒 {t.privateRecipe}
+        </label>
+      </div>
       <div className="field"><label>{t.description}</label><textarea className="fi" value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t.descPh}/></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:".8rem"}}>
         <div className="field">
@@ -949,15 +956,6 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
       </div>
       <div className="divider"/>
       <div className="field"><label>{t.notes}</label><textarea className="fi" value={notes} onChange={e=>setNotes(e.target.value)} placeholder={t.notesPh} style={{minHeight:90}}/></div>
-      <div className="divider"/>
-      <div className="field">
-        <label style={{display:"flex",alignItems:"center",gap:".7rem",cursor:"pointer"}}>
-          <input type="checkbox" checked={isPrivate} onChange={e=>setIsPrivate(e.target.checked)}
-            style={{accentColor:THEME.rust,width:16,height:16,cursor:"pointer"}}/>
-          <span>🔒 {t.privateRecipe}</span>
-        </label>
-        {isPrivate&&<div style={{fontSize:".78rem",color:THEME.brown,marginTop:".3rem",fontStyle:"italic"}}>{t.privateRecipeHint}</div>}
-      </div>
       <div className="divider"/>
       <div className="field">
         <label>{t.addToBooks}</label>
