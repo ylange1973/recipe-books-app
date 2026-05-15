@@ -41,7 +41,7 @@ const T = {
     customTags:"Custom Tags", tagPh:"Add tag & press Enter…",
     recipeImages:"Recipe Images (first ⭐ = header)",
     ingredients:"Ingredients", qty:"Qty", unit:"Unit", ingName:"Ingredient name",
-    addIngredient:"+ Add ingredient", addSection:"÷ Add section",
+    addIngredient:"+ Add ingredient", addSection:"÷ Add section", privateRecipe:"Private recipe", privateRecipeHint:"Only you can see this recipe", myLikes:"❤️ My likes",
     steps:"Steps", stepLabel:"Step", stepPh:"Describe this step…",
     stepImage:"Step image (optional)", addStep:"+ Add step", serves:"Serves", servesPlaceholder:"e.g. 4", insertStep:"+ Insert step below",
     notes:"Notes", notesPh:"Tips, variations, family memories…",
@@ -92,7 +92,7 @@ const T = {
     customTags:"תגיות", tagPh:"הוסף תגית ולחץ Enter…",
     recipeImages:"תמונות מתכון (ראשונה ⭐ = כותרת)",
     ingredients:"מרכיבים", qty:"כמות", unit:"יחידה", ingName:"שם המרכיב",
-    addIngredient:"+ הוסף מרכיב", addSection:"÷ הוסף כותרת",
+    addIngredient:"+ הוסף מרכיב", addSection:"÷ הוסף כותרת", privateRecipe:"מתכון פרטי", privateRecipeHint:"רק אתה יכול לראות מתכון זה", myLikes:"❤️ האהובים שלי",
     steps:"שלבים", stepLabel:"שלב", stepPh:"תאר את השלב…",
     stepImage:"תמונת שלב (אופציונלי)", addStep:"+ הוסף שלב", serves:"מנות", servesPlaceholder:"לדוגמה: 4", insertStep:"+ הוסף שלב אחרי",
     notes:"הערות", notesPh:"טיפים, וריאציות, זיכרונות…",
@@ -139,7 +139,7 @@ const T = {
     customTags:"Tags", tagPh:"Ajouter un tag…",
     recipeImages:"Images (première ⭐ = en-tête)",
     ingredients:"Ingrédients", qty:"Qté", unit:"Unité", ingName:"Ingrédient",
-    addIngredient:"+ Ajouter", addSection:"÷ Ajouter section",
+    addIngredient:"+ Ajouter", addSection:"÷ Ajouter section", privateRecipe:"Recette privée", privateRecipeHint:"Seulement vous pouvez voir cette recette", myLikes:"❤️ Mes favoris",
     steps:"Étapes", stepLabel:"Étape", stepPh:"Décrivez cette étape…",
     stepImage:"Image (optionnel)", addStep:"+ Ajouter", serves:"Portions", servesPlaceholder:"ex. 4", insertStep:"+ Insérer après",
     notes:"Notes", notesPh:"Conseils, variantes…",
@@ -185,7 +185,7 @@ const T = {
     customTags:"Etiquetas", tagPh:"Añadir etiqueta…",
     recipeImages:"Imágenes (primera ⭐ = cabecera)",
     ingredients:"Ingredientes", qty:"Cant.", unit:"Unidad", ingName:"Ingrediente",
-    addIngredient:"+ Añadir", addSection:"÷ Añadir sección",
+    addIngredient:"+ Añadir", addSection:"÷ Añadir sección", privateRecipe:"Receta privada", privateRecipeHint:"Solo tú puedes ver esta receta", myLikes:"❤️ Mis favoritos",
     steps:"Pasos", stepLabel:"Paso", stepPh:"Describe este paso…",
     stepImage:"Imagen (opcional)", addStep:"+ Añadir", serves:"Porciones", servesPlaceholder:"ej. 4", insertStep:"+ Insertar después",
     notes:"Notas", notesPh:"Consejos, variaciones…",
@@ -231,7 +231,7 @@ const T = {
     customTags:"Tag", tagPh:"Aggiungi tag…",
     recipeImages:"Immagini (prima ⭐ = intestazione)",
     ingredients:"Ingredienti", qty:"Qtà", unit:"Unità", ingName:"Ingrediente",
-    addIngredient:"+ Aggiungi", addSection:"÷ Aggiungi sezione",
+    addIngredient:"+ Aggiungi", addSection:"÷ Aggiungi sezione", privateRecipe:"Ricetta privata", privateRecipeHint:"Solo tu puoi vedere questa ricetta", myLikes:"❤️ I miei preferiti",
     steps:"Passi", stepLabel:"Passo", stepPh:"Descrivi questo passo…",
     stepImage:"Immagine (opzionale)", addStep:"+ Aggiungi", serves:"Porzioni", servesPlaceholder:"es. 4", insertStep:"+ Inserisci dopo",
     notes:"Note", notesPh:"Consigli, variazioni…",
@@ -303,6 +303,27 @@ async function fbDeleteRecipe(id) {
 async function fbGetAllUsers() {
   const snap = await getDocs(usersCol());
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// ── Likes helpers ──────────────────────────────────────────────────────────
+const likesCol = () => collection(db, "likes");
+
+async function fbGetLikes() {
+  const snap = await getDocs(likesCol());
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+async function fbToggleLike(recipeId, userId) {
+  // Check if like exists
+  const snap = await getDocs(likesCol());
+  const existing = snap.docs.find(d => d.data().recipeId === recipeId && d.data().userId === userId);
+  if (existing) {
+    await deleteDoc(doc(db, "likes", existing.id));
+    return false; // unliked
+  } else {
+    const likeId = uid();
+    await setDoc(doc(db, "likes", likeId), { id: likeId, recipeId, userId, createdAt: now() });
+    return true; // liked
+  }
 }
 
 // ── Image compression (avoids localStorage quota issues on mobile) ─────────
@@ -661,6 +682,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
   const [steps,setSteps]=useState(initial?.steps||[{id:uid(),text:"",images:[]}]);
   const [notes,setNotes]=useState(initial?.notes||"");
   const [serves,setServes]=useState(initial?.serves||"");
+  const [isPrivate,setIsPrivate]=useState(initial?.isPrivate||false);
   const [images,setImages]=useState(initial?.images||[]);
   const [bookIds,setBookIds]=useState(initial?.bookIds||[]);
   const [srcType,setSrcType]=useState(initial?.source?.type||"manual");
@@ -771,7 +793,7 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
     onSave({
       id:initial?.id||uid(), name, description:desc, foodType, difficulty:diff, customTags:tags,
       ingredients:ings.filter(i=>i.type==="section" ? i.title.trim() : i.name.trim()), steps:steps.filter(s=>s.text.trim()),
-      notes, serves, images, bookIds,
+      notes, serves, isPrivate, images, bookIds,
       source:{ type:srcType, url:srcType==="url"?srcUrl:"", imageThumb:extImgSrc||"" },
       ownerId:initial?.ownerId||currentUser.id,
       originalLang:currentUser.lang||"en",
@@ -816,20 +838,32 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
             <div style={{fontSize:".82rem",color:THEME.brown,marginBottom:".5rem"}}>
               Upload a PDF, Word (.docx) or image file containing a recipe.
             </div>
-            <div style={{display:"flex",gap:".5rem",alignItems:"center",flexWrap:"wrap",marginBottom:".5rem"}}>
-              <div className="btn btn-s btn-sm" style={{position:"relative",overflow:"hidden"}}>
-                📄 Choose file
-                <input type="file" accept=".pdf,.docx,image/*"
-                  style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%",fontSize:0}}
-                  onChange={handleFileSelect}/>
-              </div>
-              {fileInfo&&<span style={{fontSize:".82rem",color:THEME.brown}}>📄 {fileInfo.name}</span>}
+            <div className="btn btn-p btn-sm" style={{position:"relative",overflow:"hidden",display:"inline-flex"}}>
+              📄 {fileInfo ? fileInfo.name : "Choose file & Extract ✨"}
+              <input type="file" accept=".pdf,.docx,image/*"
+                style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%",fontSize:0}}
+                onChange={async e=>{
+                  const f=e.target.files[0]; if(!f)return;
+                  if(f.size > 3 * 1024 * 1024){ setAiErr("File too large (max 3MB). Try a smaller file."); setAiSt("error"); return; }
+                  setFileInfo({name:f.name, type:f.type, file:f});
+                  setAiSt("extracting"); setAiErr("");
+                  try{
+                    const langName=(currentUser.lang||"en")==="en"?"English":LANGUAGES.find(l=>l.code===(currentUser.lang||"en"))?.nativeLabel||"English";
+                    if(f.type.startsWith("image/")){
+                      const compressed=await compressImage(await readFileAsDataURL(f));
+                      applyExtracted(await extractAndTranslate(compressed,"image",currentUser.lang||"en"));
+                    } else {
+                      const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=ev=>res(ev.target.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(f); });
+                      const apiRes=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:`Extract the recipe and return JSON translated into ${langName}. ${RECIPE_JSON_SHAPE}`,fileBase64:b64,fileType:f.type})});
+                      const data=await apiRes.json();
+                      if(data.error) throw new Error(data.error);
+                      applyExtracted(extractJSON(data.text));
+                    }
+                    setAiSt("done");
+                  } catch(e){ setAiSt("error"); setAiErr(String(e?.message||e)); }
+                  e.target.value="";
+                }}/>
             </div>
-            {fileInfo&&(
-              <button type="button" className="btn btn-p btn-sm" onClick={handleExtractFile}>
-                Extract ✨
-              </button>
-            )}
           </div>
         )}
 
@@ -910,6 +944,15 @@ function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef 
       </div>
       <div className="divider"/>
       <div className="field"><label>{t.notes}</label><textarea className="fi" value={notes} onChange={e=>setNotes(e.target.value)} placeholder={t.notesPh} style={{minHeight:90}}/></div>
+      <div className="divider"/>
+      <div className="field">
+        <label style={{display:"flex",alignItems:"center",gap:".7rem",cursor:"pointer"}}>
+          <input type="checkbox" checked={isPrivate} onChange={e=>setIsPrivate(e.target.checked)}
+            style={{accentColor:THEME.rust,width:16,height:16,cursor:"pointer"}}/>
+          <span>🔒 {t.privateRecipe}</span>
+        </label>
+        {isPrivate&&<div style={{fontSize:".78rem",color:THEME.brown,marginTop:".3rem",fontStyle:"italic"}}>{t.privateRecipeHint}</div>}
+      </div>
       <div className="divider"/>
       <div className="field">
         <label>{t.addToBooks}</label>
@@ -1177,7 +1220,7 @@ function parseIngredient(ing, lang="en") {
 
 
 // ── Recipe Detail ──────────────────────────────────────────────────────────
-function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest=false }) {
+function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest=false, likeCount=0, isLiked=false, onLike }) {
   const canEdit=!isGuest&&(recipe.ownerId===currentUser.id||recipe.editPerms?.includes(currentUser.id));
   const owner=allUsers.find(u=>u.id===recipe.ownerId);
   const rBooks=books.filter(b=>recipe.bookIds?.includes(b.id));
@@ -1224,6 +1267,11 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUs
       </div>
       <h1 className="rtitle">{display.name}</h1>
       {display.description&&<p className="rdesc">{display.description}</p>}
+      {recipe.isPrivate&&<div style={{display:"inline-flex",alignItems:"center",gap:".4rem",fontSize:".82rem",color:THEME.brown,marginBottom:".5rem",padding:".3rem .7rem",background:THEME.warm,borderRadius:6}}>🔒 {t.privateRecipeHint}</div>}
+      {onLike&&!isGuest&&<button type="button" onClick={e=>onLike(recipe.id,e)}
+        style={{background:"none",border:"none",cursor:"pointer",fontSize:"1.3rem",display:"flex",alignItems:"center",gap:".4rem",color:isLiked?"#e74c3c":THEME.tan,marginBottom:".8rem",padding:0}}>
+        {isLiked?"❤️":"🤍"}<span style={{fontSize:".9rem",color:THEME.brown}}>{likeCount>0?likeCount:""}</span>
+      </button>}
       {recipe.source?.url&&<div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{color:THEME.sage}}>{recipe.source.url}</a></div>}
       {recipe.source?.type==="image"&&<div className="rsource">{t.sourcePhoto}</div>}
       {rBooks.length>0&&<div style={{marginTop:".5rem",display:"flex",gap:".3rem",flexWrap:"wrap"}}>{rBooks.map(b=><span key={b.id} style={{fontSize:".78rem",background:THEME.parchment,padding:".1rem .5rem",borderRadius:10,color:THEME.darkBrown}}>📚 {b.name}</span>)}</div>}
@@ -1345,7 +1393,7 @@ function BookCard({ book, count, onClick, users, userLang }) {
   );
 }
 
-function RecipeCard({ recipe, onClick, users, userLang }) {
+function RecipeCard({ recipe, onClick, users, userLang, likeCount=0, isLiked=false, onLike }) {
   const owner=users.find(u=>u.id===recipe.ownerId);
   const hdr=recipe.images?.find(i=>i.role==="header")||recipe.images?.[0];
   const [display,setDisplay]=useState({name:recipe.name,foodType:recipe.foodType,difficulty:recipe.difficulty});
@@ -1379,9 +1427,12 @@ function RecipeCard({ recipe, onClick, users, userLang }) {
           {display.difficulty&&<span className="tag tag-d">{display.difficulty}</span>}
           {(recipe.customTags||[]).slice(0,2).map(tg=><span key={tg} className="tag tag-c">{tg}</span>)}
         </div>
-        <div style={{display:"flex",justifyContent:"space-between"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:".78rem",color:THEME.sage}}>{owner?.name||""}</span>
-          <span style={{fontSize:".78rem",color:THEME.tan}}>{recipe.source?.type==="url"?"🔗":recipe.source?.type==="image"?"🖼":""}</span>
+          <div style={{display:"flex",alignItems:"center",gap:".4rem"}}>
+            {likeCount>0&&<span style={{fontSize:".78rem",display:"flex",alignItems:"center",gap:".15rem",color:isLiked?"#e74c3c":THEME.tan}}>{isLiked?"❤️":"🤍"} {likeCount}</span>}
+            <span style={{fontSize:".78rem",color:THEME.tan}}>{recipe.isPrivate?"🔒":recipe.source?.type==="url"?"🔗":recipe.source?.type==="image"?"🖼":""}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1408,7 +1459,9 @@ export default function App() {
   const [fType,setFType]=useState("");
   const [fDiff,setFDiff]=useState("");
   const [fBook,setFBook]=useState("");
+  const [fLiked,setFLiked]=useState(false);
   const [toast,setToast]=useState(null);
+  const [likes,setLikes]=useState([]);
   const [showImport,setShowImport]=useState(false);
   const [importJson,setImportJson]=useState("");
   const [importStatus,setImportStatus]=useState("");
@@ -1433,8 +1486,8 @@ export default function App() {
   }, []);
 
   async function loadData() {
-    const [bks, recs, usrs] = await Promise.all([fbGetBooks(), fbGetRecipes(), fbGetAllUsers()]);
-    setBooks(bks); setRecipes(recs); setUsers(usrs);
+    const [bks, recs, usrs, lks] = await Promise.all([fbGetBooks(), fbGetRecipes(), fbGetAllUsers(), fbGetLikes()]);
+    setBooks(bks); setRecipes(recs); setUsers(usrs); setLikes(lks);
   }
 
   const t = user ? T[user.lang||"en"] : T.en;
@@ -1444,6 +1497,18 @@ export default function App() {
 
   const handleLogin=u=>{ setUser(u); };
   const isGuest = user?.email === "guest@myrecipebooks.com";
+
+  const handleToggleLike=async(recipeId, e)=>{
+    e.stopPropagation(); // prevent opening recipe when tapping like
+    if(!user||isGuest)return;
+    const liked=await fbToggleLike(recipeId, user.id);
+    // Update local likes state
+    if(liked){
+      setLikes([...likes,{id:uid(),recipeId,userId:user.id,createdAt:now()}]);
+    } else {
+      setLikes(likes.filter(l=>!(l.recipeId===recipeId&&l.userId===user.id)));
+    }
+  };
   const handleLogout=async()=>{ await signOut(auth); setView("list"); setSelBook(null); setSelRecipe(null); };
 
   const handleImport=async()=>{
@@ -1522,18 +1587,22 @@ export default function App() {
   };
   const openRecipe=r=>{ setSelRecipe(r); setView("recipe-detail"); };
 
-  const filtered=recipes.filter(r=>{
+  // Filter out private recipes not owned by current user
+  const visibleRecipes=recipes.filter(r=>!r.isPrivate||r.ownerId===user?.id);
+  const myLikedIds=new Set(likes.filter(l=>l.userId===user?.id).map(l=>l.recipeId));
+  const filtered=visibleRecipes.filter(r=>{
     const ms=!search||r.name.toLowerCase().includes(search.toLowerCase());
     const mt=!fType||r.foodType===fType;
     const md=!fDiff||r.difficulty===fDiff;
     const mb=!fBook||r.bookIds?.includes(fBook);
-    return ms&&mt&&md&&mb;
+    const ml=!fLiked||myLikedIds.has(r.id);
+    return ms&&mt&&md&&mb&&ml;
   });
 
   if(authLoading) return <><style>{buildCSS(false)}</style><div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"'Playfair Display',serif",fontSize:"1.2rem",color:THEME.brown}}>📚 Loading…</div></>
   if(!user) return <><style>{buildCSS(false)}</style><LoginScreen onLogin={handleLogin}/></>;
 
-  const bookRecipes=selBook?recipes.filter(r=>r.bookIds?.includes(selBook.id)):[];
+  const bookRecipes=selBook?visibleRecipes.filter(r=>r.bookIds?.includes(selBook.id)):[];
 
   return (
     <>
@@ -1544,7 +1613,7 @@ export default function App() {
           <div className="logo">📚 <span className="logo-text">{t.appName}</span></div>
           <div className="topbar-right">
             <select className="lang-sel" value={user.lang||"en"} onChange={e=>updateLang(e.target.value)} title={t.preferredLang}>
-              {LANGUAGES.map(l=><option key={l.code} value={l.code}>{l.nativeLabel}</option>)}
+              {LANGUAGES.filter(l=>["en","he"].includes(l.code)).map(l=><option key={l.code} value={l.code}>{l.nativeLabel}</option>)}
             </select>
             <div className="topbar-user">👤 {user.name}</div>
             <button className="btn btn-g btn-sm" onClick={handleLogout}>{t.signOut}</button>
@@ -1567,6 +1636,9 @@ export default function App() {
               onEdit={()=>{ setEditRecipe(selRecipe); setShowRecipeForm(true); }}
               onDelete={()=>deleteRecipe(selRecipe.id)}
               onTrackOpen={updated=>{ setSelRecipe(updated); setRecipes(recipes.map(r=>r.id===updated.id?updated:r)); }}
+              likeCount={likes.filter(l=>l.recipeId===selRecipe?.id).length}
+              isLiked={likes.some(l=>l.recipeId===selRecipe?.id&&l.userId===user?.id)}
+              onLike={handleToggleLike}
               currentUser={user} allUsers={users} books={books} t={t} isGuest={isGuest}/>
           )}
 
@@ -1607,7 +1679,7 @@ export default function App() {
                 </div>
                 {bookRecipes.length===0
                   ?<div className="empty"><div className="empty-icon">🍳</div><div className="empty-txt">{t.noRecipes}</div></div>
-                  :<div className="grid">{bookRecipes.map(r=><RecipeCard key={r.id} recipe={r} onClick={()=>openRecipe(r)} users={users} userLang={user?.lang||"en"}/>)}</div>}
+                  :<div className="grid">{bookRecipes.map(r=><RecipeCard key={r.id} recipe={r} onClick={()=>openRecipe(r)} users={users} userLang={user?.lang||"en"} likeCount={likes.filter(l=>l.recipeId===r.id).length} isLiked={likes.some(l=>l.recipeId===r.id&&l.userId===user?.id)} onLike={handleToggleLike}/>)}</div>}
               </div>
             </div>
             );
@@ -1625,7 +1697,7 @@ export default function App() {
                   {books.length===0
                     ?<div className="empty"><div className="empty-icon">📚</div><div className="empty-txt">{t.noBooks}</div></div>
                     :<div className="grid">
-                      {books.map(b=><BookCard key={b.id} book={b} count={recipes.filter(r=>r.bookIds?.includes(b.id)).length} onClick={()=>openBook(b)} users={users} userLang={user?.lang||"en"}/>)}
+                      {books.map(b=><BookCard key={b.id} book={b} count={visibleRecipes.filter(r=>r.bookIds?.includes(b.id)).length} onClick={()=>openBook(b)} users={users} userLang={user?.lang||"en"}/>)}
                       {!isGuest&&<div className="add-card" onClick={()=>setShowBookForm(true)}>
                         <div style={{fontSize:"2rem"}}>+</div>
                         <div style={{fontSize:".88rem",fontWeight:500}}>{t.newBook}</div>
@@ -1651,10 +1723,11 @@ export default function App() {
                     {t.DIFFICULTIES.map(d=><div key={d} className={`chip${fDiff===d?" act":""}`} onClick={()=>setFDiff(fDiff===d?"":d)}>{d}</div>)}
                     {books.length>0&&<><span className="fl" style={{marginLeft:".5rem"}}>{t.bookLabel}</span>
                     {books.map(b=><div key={b.id} className={`chip${fBook===b.id?" act":""}`} onClick={()=>setFBook(fBook===b.id?"":b.id)}>{b.name}</div>)}</>}
+                    <div className={`chip${fLiked?" act":""}`} style={{marginLeft:".5rem"}} onClick={()=>setFLiked(!fLiked)}>{t.myLikes}</div>
                   </div>
                   {filtered.length===0
                     ?<div className="empty"><div className="empty-icon">🍽</div><div className="empty-txt">{recipes.length===0?t.noRecipes:t.noMatch}</div></div>
-                    :<div className="grid">{filtered.map(r=><RecipeCard key={r.id} recipe={r} onClick={()=>openRecipe(r)} users={users} userLang={user?.lang||"en"}/>)}</div>}
+                    :<div className="grid">{filtered.map(r=><RecipeCard key={r.id} recipe={r} onClick={()=>openRecipe(r)} users={users} userLang={user?.lang||"en"} likeCount={likes.filter(l=>l.recipeId===r.id).length} isLiked={likes.some(l=>l.recipeId===r.id&&l.userId===user?.id)} onLike={handleToggleLike}/>)}</div>}
                 </>
               )}
             </div>
