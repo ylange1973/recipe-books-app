@@ -137,7 +137,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .bk-desc{font-family:'Lora',serif;font-style:italic;color:${THEME.brown};font-size:.95rem;margin-top:.3rem;}
 .bk-meta{font-size:.8rem;color:${THEME.tan};margin-top:.5rem;}
 /* Misc */
-.back-btn{display:inline-flex;align-items:center;gap:.4rem;color:${THEME.brown};background:none;border:none;cursor:pointer;font-size:.88rem;font-family:'Source Sans 3',sans-serif;padding:.3rem 0;margin-bottom:1rem;}
+.back-btn{display:inline-flex;align-items:center;gap:.4rem;color:${THEME.brown};background:${THEME.cream};border:none;cursor:pointer;font-size:.88rem;font-family:'Source Sans 3',sans-serif;padding:.3rem .6rem;position:sticky;top:56px;z-index:80;margin-bottom:1rem;border-radius:0 0 6px 0;box-shadow:0 2px 6px rgba(44,26,14,.08);}
 .back-btn:hover{color:${THEME.rust};}
 .empty{text-align:center;padding:4rem 2rem;color:${THEME.tan};}
 .empty-icon{font-size:3rem;margin-bottom:.8rem;}

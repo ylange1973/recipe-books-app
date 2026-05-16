@@ -126,18 +126,22 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       )}
       {ts === "error" && <div className="trans-banner" style={{ background: "#fff3f0", borderColor: THEME.rust }}>⚠️ {t.transError}</div>}
       {headerImg && <img className="rhero" src={headerImg.src} alt={display.name} />}
-      <div className="rmeta-row">
-        {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
-        {display.difficulty && <span className="tag tag-d">{display.difficulty}</span>}
-        {(recipe.customTags || []).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
+      <div className="rmeta-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+          {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
+          {display.difficulty && <span className="tag tag-d">{display.difficulty}</span>}
+          {(recipe.customTags || []).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
+        </div>
+        {onLike && !isGuest && (
+          <button type="button" onClick={e => onLike(recipe.id, e)}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: ".3rem", color: isLiked ? "#e74c3c" : THEME.tan, padding: ".2rem .4rem", flexShrink: 0 }}>
+            <span style={{ fontSize: "1.6rem", lineHeight: 1 }}>{isLiked ? "♥" : "♡"}</span>
+            {likeCount > 0 && <span style={{ fontSize: ".95rem", color: THEME.brown, fontWeight: 500 }}>{likeCount}</span>}
+          </button>
+        )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: ".6rem", marginBottom: ".4rem", flexWrap: "wrap" }}>
         {recipe.isPrivate && <div style={{ display: "inline-flex", alignItems: "center", gap: ".3rem", fontSize: ".78rem", color: THEME.brown, padding: ".2rem .6rem", background: THEME.warm, borderRadius: 6, border: `1px solid ${THEME.tan}` }}>🔒 {t.privateRecipeHint}</div>}
-        {onLike && !isGuest && <button type="button" onClick={e => onLike(recipe.id, e)}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: ".3rem", color: isLiked ? "#e74c3c" : THEME.tan, padding: 0 }}>
-          <span style={{ fontSize: "1.2rem" }}>{isLiked ? "♥" : "♡"}</span>
-          <span style={{ fontSize: ".85rem", color: THEME.brown }}>{likeCount > 0 ? likeCount : ""}</span>
-        </button>}
       </div>
       <h1 className="rtitle">{display.name}</h1>
       {display.description && <p className="rdesc">{display.description}</p>}
@@ -147,9 +151,6 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       <div className="stat-row" style={{ marginTop: "1rem" }}>
         <div className="stat"><strong>{t.createdBy}</strong>{owner?.name || "—"}</div>
         <div className="stat"><strong>{t.created}</strong>{recipe.meta?.createdAt ? new Date(recipe.meta.createdAt).toLocaleDateString() : "—"}</div>
-        <div className="stat"><strong>{t.lastEdited}</strong>{recipe.meta?.lastEdited ? new Date(recipe.meta.lastEdited).toLocaleDateString() : "—"}</div>
-        <div className="stat"><strong>{t.timesOpened}</strong>{recipe.meta?.timesOpened || 0}</div>
-        <div className="stat"><strong>{t.lastOpened}</strong>{recipe.meta?.lastOpened ? new Date(recipe.meta.lastOpened).toLocaleDateString() : "—"}</div>
       </div>
       {canEdit && (
         <div className="act-row" style={{ marginBottom: "1.5rem" }}>

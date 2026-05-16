@@ -5,7 +5,6 @@ import { callAI, extractJSON } from "../ai.js";
 import { fbGetTranslation, fbSaveTranslation } from "../firestore.js";
 
 export default function RecipeCard({ recipe, onClick, users, userLang, likeCount = 0, isLiked = false, onLike }) {
-  const owner = users.find(u => u.id === recipe.ownerId);
   const hdr = recipe.images?.find(i => i.role === "header") || recipe.images?.[0];
   const [display, setDisplay] = useState({ name: recipe.name, foodType: recipe.foodType, difficulty: recipe.difficulty });
 
@@ -58,17 +57,15 @@ export default function RecipeCard({ recipe, onClick, users, userLang, likeCount
       </div>
       <div className="card-body">
         <div className="card-name">{display.name}</div>
-        <div className="card-rtags">
-          {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
-          {display.difficulty && <span className="tag tag-d">{display.difficulty}</span>}
-          {(recipe.customTags || []).slice(0, 2).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: ".78rem", color: THEME.sage }}>{owner?.name || ""}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
-            {likeCount > 0 && <span style={{ fontSize: ".78rem", display: "flex", alignItems: "center", gap: ".15rem", color: isLiked ? "#e74c3c" : THEME.tan }}>{isLiked ? "♥" : "♡"} {likeCount}</span>}
-            <span style={{ fontSize: ".78rem", color: THEME.tan }}>{recipe.isPrivate ? "🔒" : recipe.source?.type === "url" ? "🔗" : recipe.source?.type === "image" ? "🖼" : ""}</span>
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: ".4rem" }}>
+          {recipe.isPrivate
+            ? <span style={{ fontSize: ".78rem", color: THEME.tan }}>🔒</span>
+            : <span />}
+          {likeCount > 0 && (
+            <span style={{ fontSize: ".78rem", display: "flex", alignItems: "center", gap: ".15rem", color: isLiked ? "#e74c3c" : THEME.tan }}>
+              {isLiked ? "♥" : "♡"} {likeCount}
+            </span>
+          )}
         </div>
       </div>
     </div>
