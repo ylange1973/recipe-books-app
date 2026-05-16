@@ -52,8 +52,13 @@ export default function RecipeCard({ recipe, onClick, users, userLang, likeCount
 
   return (
     <div className="card" onClick={onClick}>
-      <div className="card-rimg">
+      <div className="card-rimg" style={{ position: "relative" }}>
         {hdr ? <img src={hdr.src} alt="" /> : <span style={{ fontSize: "3.5rem" }}>🍽</span>}
+        <div onClick={e => { e.stopPropagation(); onLike && onLike(recipe.id, e); }}
+          style={{ position: "absolute", bottom: 6, insetInlineEnd: 8, display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1, cursor: onLike ? "pointer" : "default" }}>
+          <span style={{ fontSize: "2rem", color: isLiked ? "#e74c3c" : "rgba(255,255,255,0.85)", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}>{isLiked ? "♥" : "♡"}</span>
+          {likeCount > 0 && <span style={{ fontSize: ".7rem", color: "#fff", fontWeight: 700, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{likeCount}</span>}
+        </div>
       </div>
       <div className="card-body">
         <div className="card-name">{display.name}</div>
@@ -61,11 +66,6 @@ export default function RecipeCard({ recipe, onClick, users, userLang, likeCount
           {recipe.isPrivate
             ? <span style={{ fontSize: ".78rem", color: THEME.tan }}>🔒</span>
             : <span />}
-          {likeCount > 0 && (
-            <span style={{ fontSize: ".78rem", display: "flex", alignItems: "center", gap: ".15rem", color: isLiked ? "#e74c3c" : THEME.tan }}>
-              {isLiked ? "♥" : "♡"} {likeCount}
-            </span>
-          )}
         </div>
       </div>
     </div>

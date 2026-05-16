@@ -135,7 +135,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
         {onLike && !isGuest && (
           <button type="button" onClick={e => onLike(recipe.id, e)}
             style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: ".3rem", color: isLiked ? "#e74c3c" : THEME.tan, padding: ".2rem .4rem", flexShrink: 0 }}>
-            <span style={{ fontSize: "1.6rem", lineHeight: 1 }}>{isLiked ? "♥" : "♡"}</span>
+            <span style={{ fontSize: "2.8rem", lineHeight: 1 }}>{isLiked ? "♥" : "♡"}</span>
             {likeCount > 0 && <span style={{ fontSize: ".95rem", color: THEME.brown, fontWeight: 500 }}>{likeCount}</span>}
           </button>
         )}
