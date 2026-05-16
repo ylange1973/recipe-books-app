@@ -176,6 +176,30 @@ export default function App() {
 
   const openRecipe = r => { setSelRecipe(r); setView("recipe-detail"); };
 
+  // Seed history on mount so there's always one entry to consume before exiting
+  useEffect(() => {
+    window.history.replaceState({ view: "list" }, "");
+  }, []);
+
+  // Intercept browser/mobile back button
+  useEffect(() => {
+    const handlePop = () => {
+      if (view === "recipe-detail") {
+        setSelRecipe(null);
+        setView(selBook ? "book-detail" : "list");
+        // Push a new entry so next back press is interceptable
+        window.history.pushState({ view: selBook ? "book-detail" : "list" }, "");
+      } else if (view === "book-detail") {
+        setSelBook(null);
+        setView("list");
+        // Back from list will now exit naturally — don't push anything
+      }
+      // On list view — do nothing, let browser handle exit
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, [view, selBook]);
+
   const visibleRecipes = recipes.filter(r => !r.isPrivate || r.ownerId === user?.id);
   const myLikedIds = new Set(likes.filter(l => l.userId === user?.id).map(l => l.recipeId));
   const filtered = visibleRecipes.filter(r => {
