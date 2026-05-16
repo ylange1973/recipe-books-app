@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { THEME, LANGUAGES, GUEST_EMAIL } from "../constants.js";
 import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
 import { translateRecipe } from "../ai.js";
-import { fbSaveRecipe, fbGetTranslation, fbSaveTranslation } from "../firestore.js";
+import { fbSaveRecipe, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation } from "../firestore.js";
 
 export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest = false, likeCount = 0, isLiked = false, onLike }) {
   const canEdit = !isGuest && (recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id));
@@ -75,12 +75,55 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
     loadTranslation();
   }, [recipe.id, lang]);
 
+  const handleRetranslate = async () => {
+    const ck = `${recipe.id}__${lang}`;
+    // Clear Firestore translation
+    await fbDeleteTranslation(recipe.id, lang);
+    // Clear localStorage cache
+    const c = tcLoad() || {};
+    delete c[ck];
+    tcSave(c);
+    // Reset display and trigger fresh translation
+    setDisplay(recipe);
+    setTs("loading");
+    try {
+      const tr = await translateRecipe(recipe, lang);
+      const toStore = {
+        name: tr.name, description: tr.description,
+        foodType: tr.foodType, difficulty: tr.difficulty, notes: tr.notes,
+        ingredients: (tr.ingredients || []).map(i => i.type === "section"
+          ? { id: i.id, type: "section", title: i.title }
+          : { id: i.id, type: "ingredient", name: i.name }),
+        steps: (tr.steps || []).map(s => ({ id: s.id, text: s.text })),
+        stale: false,
+      };
+      await fbSaveTranslation(recipe.id, lang, toStore);
+      const c2 = tcLoad() || {}; c2[ck] = toStore; tcSave(c2);
+      setDisplay({ ...recipe, ...tr });
+      setTs("done");
+    } catch (e) {
+      console.error("[retranslate error]", e?.message);
+      setDisplay(recipe);
+      setTs("error");
+    }
+  };
+
   return (
     <div className="rdetail">
       <button className="back-btn" onClick={onBack}>{t.back}</button>
       {ts === "loading" && <div className="trans-banner"><span className="spinner" />{t.translating}</div>}
-      {ts === "done" && needsTrans && <div className="trans-banner" style={{ background: "#f0f7ed", borderColor: THEME.sage }}>✓ {t.translated} ({LANGUAGES.find(l => l.code === lang)?.nativeLabel})</div>}
-      {ts === "stale" && needsTrans && <div className="trans-banner" style={{ background: "#fff8e6", borderColor: THEME.gold }}>⚠️ {t.transStale || "This translation may be outdated"}{canEdit && <span style={{ marginLeft: ".5rem", fontSize: ".8rem", color: THEME.brown }}>— edit to review and update</span>}</div>}
+      {ts === "done" && needsTrans && (
+        <div className="trans-banner" style={{ background: "#f0f7ed", borderColor: THEME.sage, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>✓ {t.translated} ({LANGUAGES.find(l => l.code === lang)?.nativeLabel})</span>
+          {recipe.ownerId === currentUser.id && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
+        </div>
+      )}
+      {ts === "stale" && needsTrans && (
+        <div className="trans-banner" style={{ background: "#fff8e6", borderColor: THEME.gold, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>⚠️ {t.transStale || "This translation may be outdated"}</span>
+          {recipe.ownerId === currentUser.id && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
+        </div>
+      )}
       {ts === "error" && <div className="trans-banner" style={{ background: "#fff3f0", borderColor: THEME.rust }}>⚠️ {t.transError}</div>}
       {headerImg && <img className="rhero" src={headerImg.src} alt={display.name} />}
       <div className="rmeta-row">

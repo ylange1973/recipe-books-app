@@ -73,6 +73,14 @@ export async function fbSaveTranslation(recipeId, langCode, data) {
   await setDoc(doc(db, "recipes", recipeId, "translations", langCode), { ...data, stale: false, savedAt: new Date().toISOString() });
 }
 
+export async function fbDeleteTranslation(recipeId, langCode) {
+  try {
+    await deleteDoc(doc(db, "recipes", recipeId, "translations", langCode));
+  } catch (e) {
+    console.warn("fbDeleteTranslation failed:", e.message);
+  }
+}
+
 export async function fbMarkTranslationsStale(recipeId) {
   const LANGS = ["en", "he", "fr", "es", "it"];
   await Promise.all(LANGS.map(async langCode => {
