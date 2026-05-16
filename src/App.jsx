@@ -181,20 +181,20 @@ export default function App() {
     window.history.replaceState({ view: "list" }, "");
   }, []);
 
+  const [debugLog, setDebugLog] = useState("");
+
   // Intercept browser/mobile back button
   useEffect(() => {
     const handlePop = () => {
+      setDebugLog(`popstate fired | view:${view} | book:${selBook?.id || "none"}`);
       if (view === "recipe-detail") {
         setSelRecipe(null);
         setView(selBook ? "book-detail" : "list");
-        // Push a new entry so next back press is interceptable
         window.history.pushState({ view: selBook ? "book-detail" : "list" }, "");
       } else if (view === "book-detail") {
         setSelBook(null);
         setView("list");
-        // Back from list will now exit naturally — don't push anything
       }
-      // On list view — do nothing, let browser handle exit
     };
     window.addEventListener("popstate", handlePop);
     return () => window.removeEventListener("popstate", handlePop);
@@ -222,6 +222,7 @@ export default function App() {
     <>
       <style>{buildCSS(isRTL)}</style>
       <div className="app">
+        {debugLog && <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.8)", color: "#0f0", fontSize: "11px", padding: "6px 10px", zIndex: 9999, fontFamily: "monospace" }}>{debugLog}</div>}
         <div className="topbar">
           <div className="logo">📚 <span className="logo-text">{t.appName}</span></div>
           <div className="topbar-right">
