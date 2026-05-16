@@ -17,7 +17,7 @@ export function readFileAsDataURL(file) {
   });
 }
 
-export function compressImage(dataUrl, maxPx = 800, quality = 0.72) {
+export function compressImage(dataUrl, maxPx = 600, quality = 0.65) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {

@@ -24,14 +24,19 @@ export default function ImageInput({ images = [], onChange, maxImages = 10, labe
     e.target.value = "";
   };
 
+  const atLimit = images.length >= maxImages;
+
   return (
     <div>
       {label && <div className="sl">{label}</div>}
-      <div style={{ display: "flex", gap: ".5rem", marginBottom: ".5rem", flexWrap: "wrap" }}>
-        <button type="button" className="btn btn-s btn-sm" onClick={() => fileRef.current.click()}>📁 Upload</button>
-        <button type="button" className="btn btn-s btn-sm" onClick={() => camRef.current.click()}>📷 Camera</button>
+      <div style={{ display: "flex", gap: ".5rem", marginBottom: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
+        <button type="button" className="btn btn-s btn-sm" onClick={() => !atLimit && fileRef.current.click()}
+          disabled={atLimit} style={{ opacity: atLimit ? 0.4 : 1, cursor: atLimit ? "not-allowed" : "pointer" }}>📁 Upload</button>
+        <button type="button" className="btn btn-s btn-sm" onClick={() => !atLimit && camRef.current.click()}
+          disabled={atLimit} style={{ opacity: atLimit ? 0.4 : 1, cursor: atLimit ? "not-allowed" : "pointer" }}>📷 Camera</button>
         <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleFiles} />
         <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFiles} />
+        {atLimit && <span style={{ fontSize: ".78rem", color: THEME.rust }}>Max {maxImages} images reached — remove one to add more.</span>}
       </div>
       {uploading && <div style={{ fontSize: ".8rem", color: THEME.brown, marginBottom: ".4rem" }}>⏳ Processing image…</div>}
       {images.length > 0 && (
