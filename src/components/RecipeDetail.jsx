@@ -4,6 +4,23 @@ import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
 import { translateRecipe } from "../ai.js";
 import { fbSaveRecipe, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation } from "../firestore.js";
 
+// Builds a translation object to store in Firestore.
+// Takes translated text fields from AI response, but preserves
+// amount and unit from the original recipe matched by ingredient id.
+function buildTranslationStore(tr, originalRecipe) {
+  return {
+    name: tr.name, description: tr.description,
+    foodType: tr.foodType, difficulty: tr.difficulty, notes: tr.notes,
+    ingredients: (tr.ingredients || []).map(i => {
+      if (i.type === "section") return { id: i.id, type: "section", title: i.title };
+      const orig = originalRecipe.ingredients?.find(o => o.id === i.id);
+      return { id: i.id, type: "ingredient", name: i.name, amount: orig?.amount || "", unit: orig?.unit || "" };
+    }),
+    steps: (tr.steps || []).map(s => ({ id: s.id, text: s.text })),
+    stale: false,
+  };
+}
+
 export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest = false, likeCount = 0, isLiked = false, onLike }) {
   const canEdit = !isGuest && (recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id));
   const owner = allUsers.find(u => u.id === recipe.ownerId);
@@ -50,16 +67,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       // 3. Fall back to AI translation
       try {
         const tr = await translateRecipe(recipe, lang);
-        // Store text-only fields in Firestore
-        const toStore = {
-          name: tr.name, description: tr.description,
-          foodType: tr.foodType, difficulty: tr.difficulty, notes: tr.notes,
-          ingredients: (tr.ingredients || []).map(i => i.type === "section"
-            ? { id: i.id, type: "section", title: i.title }
-            : { id: i.id, type: "ingredient", name: i.name }),
-          steps: (tr.steps || []).map(s => ({ id: s.id, text: s.text })),
-          stale: false,
-        };
+        const toStore = buildTranslationStore(tr, recipe);
         await fbSaveTranslation(recipe.id, lang, toStore);
         // Cache in localStorage
         const c = tcLoad() || {}; c[ck] = toStore; tcSave(c);
@@ -88,15 +96,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
     setTs("loading");
     try {
       const tr = await translateRecipe(recipe, lang);
-      const toStore = {
-        name: tr.name, description: tr.description,
-        foodType: tr.foodType, difficulty: tr.difficulty, notes: tr.notes,
-        ingredients: (tr.ingredients || []).map(i => i.type === "section"
-          ? { id: i.id, type: "section", title: i.title }
-          : { id: i.id, type: "ingredient", name: i.name }),
-        steps: (tr.steps || []).map(s => ({ id: s.id, text: s.text })),
-        stale: false,
-      };
+      const toStore = buildTranslationStore(tr, recipe);
       await fbSaveTranslation(recipe.id, lang, toStore);
       const c2 = tcLoad() || {}; c2[ck] = toStore; tcSave(c2);
       setDisplay({ ...recipe, ...tr });
