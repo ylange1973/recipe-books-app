@@ -62,9 +62,9 @@ export default function RecipeCard({ recipe, onClick, users, userLang, likeCount
             <div className="card-name" style={{ margin: 0 }}>{display.name}</div>
           </div>
           <div onClick={e => { e.stopPropagation(); onLike && onLike(recipe.id, e); }}
-            style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1, cursor: onLike ? "pointer" : "default", flexShrink: 0 }}>
-            <span style={{ fontSize: "1.8rem", color: isLiked ? "#e74c3c" : THEME.tan }}>{isLiked ? "♥" : "♡"}</span>
-            {likeCount > 0 && <span style={{ fontSize: ".7rem", color: THEME.tan, fontWeight: 700 }}>{likeCount}</span>}
+            style={{ display: "flex", alignItems: "center", gap: ".2rem", cursor: onLike ? "pointer" : "default", flexShrink: 0 }}>
+            <span style={{ fontSize: "1.8rem", color: isLiked ? "#e74c3c" : THEME.tan, lineHeight: 1 }}>{isLiked ? "♥" : "♡"}</span>
+            {likeCount > 0 && <span style={{ fontSize: ".75rem", color: THEME.tan, fontWeight: 700 }}>{likeCount}</span>}
           </div>
         </div>
       </div>
