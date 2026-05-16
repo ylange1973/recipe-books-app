@@ -115,13 +115,13 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       {ts === "done" && needsTrans && (
         <div className="trans-banner" style={{ background: "#f0f7ed", borderColor: THEME.sage, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>✓ {t.translated} ({LANGUAGES.find(l => l.code === lang)?.nativeLabel})</span>
-          {recipe.ownerId === currentUser.id && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
+          {(recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id)) && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
         </div>
       )}
       {ts === "stale" && needsTrans && (
         <div className="trans-banner" style={{ background: "#fff8e6", borderColor: THEME.gold, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>⚠️ {t.transStale || "This translation may be outdated"}</span>
-          {recipe.ownerId === currentUser.id && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
+          {(recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id)) && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
         </div>
       )}
       {ts === "error" && <div className="trans-banner" style={{ background: "#fff3f0", borderColor: THEME.rust }}>⚠️ {t.transError}</div>}
