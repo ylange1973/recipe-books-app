@@ -62,7 +62,17 @@ export async function translateRecipe(recipe, targetLang) {
     ingredients: recipe.ingredients, steps: recipe.steps,
     notes: recipe.notes, foodType: recipe.foodType, difficulty: recipe.difficulty
   };
-  const prompt = `Translate this recipe JSON into ${langName}. Return ONLY valid JSON, same structure, no markdown.\n\n${JSON.stringify(payload)}`;
+  const prompt = [
+    `You are a culinary translator for a recipe app. Translate this recipe JSON into ${langName}.`,
+    "Use natural culinary language as it appears in cookbooks and recipes — not literal or formal translations.",
+    "Rules:",
+    "- Translate ONLY: name, description, foodType, difficulty, notes, ingredient names, section titles, step text",
+    "- Do NOT translate or modify: amount, unit, id, type fields — copy them exactly as-is",
+    "- Use common culinary terms for ingredients as they appear in local supermarkets and cookbooks",
+    "- Return ONLY valid JSON, same structure, no markdown",
+    "",
+    JSON.stringify(payload)
+  ].join("\n");
   console.log("[translateRecipe] calling AI, payload size:", JSON.stringify(payload).length);
   const raw = await callAI(prompt);
   console.log("[translateRecipe] raw response:", raw?.slice(0, 200));
