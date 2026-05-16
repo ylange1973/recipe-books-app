@@ -34,6 +34,12 @@ export async function fbGetRecipes() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+export async function fbTrackRecipeOpen(recipeId, timesOpened) {
+  await setDoc(doc(db, "recipes", recipeId), {
+    meta: { timesOpened, lastOpened: new Date().toISOString() }
+  }, { merge: true });
+}
+
 export async function fbSaveRecipe(recipe) {
   await setDoc(doc(db, "recipes", recipe.id), recipe, { merge: true });
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { THEME, LANGUAGES, GUEST_EMAIL } from "../constants.js";
 import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
 import { translateRecipe } from "../ai.js";
-import { fbSaveRecipe, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation } from "../firestore.js";
+import { fbTrackRecipeOpen, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation } from "../firestore.js";
 
 // Builds a translation object to store in Firestore.
 // Takes translated text fields from AI response, but preserves
@@ -33,9 +33,9 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
 
   useEffect(() => {
     if (!isGuest) {
-      const updated = { ...recipe, meta: { ...recipe.meta, timesOpened: (recipe.meta?.timesOpened || 0) + 1, lastOpened: now() } };
-      fbSaveRecipe(updated).catch(() => {});
-      onTrackOpen(updated);
+      const newTimesOpened = (recipe.meta?.timesOpened || 0) + 1;
+      fbTrackRecipeOpen(recipe.id, newTimesOpened).catch(() => {});
+      onTrackOpen({ ...recipe, meta: { ...recipe.meta, timesOpened: newTimesOpened, lastOpened: now() } });
     }
     if (!needsTrans) { setDisplay(recipe); setTs("none"); return; }
 
