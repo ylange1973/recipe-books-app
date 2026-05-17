@@ -33,9 +33,9 @@ export default function BookCard({ book, count, onClick, users, userLang }) {
       <div className="card-body">
         <div className="card-name">{display.name}</div>
         {display.description && <div className="card-desc">{display.description}</div>}
-        <div className="card-meta">
-          <span className="card-count">{count}</span>
-          <span className="card-creator">{owner?.name || ""}</span>
+        <div className="card-meta" style={{ flexDirection: "column", alignItems: "flex-end", gap: ".1rem" }}>
+          <span className="card-creator" style={{ fontSize: ".78rem" }}>{owner?.name || ""}</span>
+          <span className="card-count" style={{ fontSize: ".78rem" }}>{count} {count === 1 ? "recipe" : "recipes"}</span>
         </div>
       </div>
     </div>

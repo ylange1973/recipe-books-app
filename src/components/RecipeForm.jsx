@@ -26,7 +26,18 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   const [aiErr, setAiErr] = useState("");
   const [fileInfo, setFileInfo] = useState(null);
   const [extImgSrc, setExtImgSrc] = useState(null);
-  const extRef = useRef();
+  const [showImport, setShowImport] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const fileInputRef = useRef();
+  const cameraInputRef = useRef();
+
+  // Track any change as dirty
+  const markDirty = () => setIsDirty(true);
+
+  const handleCancel = () => {
+    if (isDirty && !window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) return;
+    onCancel();
+  };
 
   const applyExtracted = r => {
     if (r.name) setName(r.name);
@@ -43,6 +54,28 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   };
 
   const getLangName = () => (currentUser.lang || "en") === "en" ? "English" : LANGUAGES.find(l => l.code === (currentUser.lang || "en"))?.nativeLabel || "English";
+
+  const handleFileExtract = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 3 * 1024 * 1024) { setAiErr("File too large (max 3MB)."); setAiSt("error"); return; }
+    setFileInfo({ name: f.name, type: f.type });
+    setAiSt("extracting"); setAiErr("");
+    try {
+      const langName = getLangName();
+      if (f.type.startsWith("image/")) {
+        const compressed = await compressImage(await readFileAsDataURL(f));
+        applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en"));
+      } else {
+        const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = ev => res(ev.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
+        const apiRes = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `Extract the recipe and return JSON translated into ${langName}. ${AI_SHAPE}`, fileBase64: b64, fileType: f.type }) });
+        const data = await apiRes.json();
+        if (data.error) throw new Error(data.error);
+        applyExtracted(extractJSON(data.text));
+      }
+      setAiSt("done");
+    } catch (err) { setAiSt("error"); setAiErr(String(err?.message || err)); }
+    e.target.value = "";
+  };
 
   const handleExtractUrl = async () => {
     if (!srcUrl.trim()) return; setAiSt("extracting"); setAiErr("");
@@ -104,66 +137,48 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
 
   return (
     <div>
-      <div className="field">
-        <label>{t.source}</label>
-        <div className="src-tabs">
-          {["manual", "url", "paste", "file"].map(tp => (
-            <button key={tp} type="button" className={`src-tab${srcType === tp ? " act" : ""}`} onClick={() => setSrcType(tp)}>
-              {tp === "manual" ? t.manual : tp === "url" ? t.website : tp === "paste" ? t.pasteText : t.fileImport}
+      {/* Import button — only show when adding new recipe */}
+      {!initial && (
+        <div className="field">
+          <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
+            <button type="button" className="btn btn-s" onClick={() => setShowImport(v => !v)}>
+              ✨ {t.importBtn || "Import"}
             </button>
-          ))}
-        </div>
-        {srcType === "url" && (
-          <div style={{ display: "flex", gap: ".4rem" }}>
-            <input className="fi" style={{ fontSize: ".88rem" }} type="url" placeholder="https://…" value={srcUrl} onChange={e => setSrcUrl(e.target.value)} />
-            <button type="button" className="btn btn-s btn-sm" onClick={handleExtractUrl}>{t.extractBtn}</button>
+            {showImport && (
+              <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("url"); setShowImport(false); }}>🔗 {t.website}</button>
+                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("paste"); setShowImport(false); }}>📋 {t.pasteText}</button>
+                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("file"); fileInputRef.current?.click(); setShowImport(false); }}>📄 {t.fileImport}</button>
+                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("file"); cameraInputRef.current?.click(); setShowImport(false); }}>📷 {t.camera || "Camera"}</button>
+              </div>
+            )}
           </div>
-        )}
-        {srcType === "paste" && (
-          <div>
-            <textarea className="fi" style={{ minHeight: 140, fontSize: ".85rem", marginBottom: ".5rem" }}
-              placeholder={t.pasteTextPh} value={pastedText} onChange={e => setPastedText(e.target.value)} />
-            <button type="button" className="btn btn-p btn-sm" onClick={handleExtractPaste} disabled={!pastedText.trim()}>{t.pasteExtractBtn}</button>
-          </div>
-        )}
-        {srcType === "file" && (
-          <div>
-            <div style={{ fontSize: ".82rem", color: THEME.brown, marginBottom: ".5rem" }}>Upload a PDF, Word (.docx) or image file containing a recipe.</div>
-            <div className="btn btn-p btn-sm" style={{ position: "relative", overflow: "hidden", display: "inline-flex" }}>
-              📄 {fileInfo ? fileInfo.name : "Choose file & Extract ✨"}
-              <input type="file" accept=".pdf,.docx,image/*"
-                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%", fontSize: 0 }}
-                onChange={async e => {
-                  const f = e.target.files[0]; if (!f) return;
-                  if (f.size > 3 * 1024 * 1024) { setAiErr("File too large (max 3MB)."); setAiSt("error"); return; }
-                  setFileInfo({ name: f.name, type: f.type, file: f });
-                  setAiSt("extracting"); setAiErr("");
-                  try {
-                    const langName = getLangName();
-                    if (f.type.startsWith("image/")) {
-                      const compressed = await compressImage(await readFileAsDataURL(f));
-                      applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en"));
-                    } else {
-                      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = ev => res(ev.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
-                      const apiRes = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `Extract the recipe and return JSON translated into ${langName}. ${AI_SHAPE}`, fileBase64: b64, fileType: f.type }) });
-                      const data = await apiRes.json();
-                      if (data.error) throw new Error(data.error);
-                      applyExtracted(extractJSON(data.text));
-                    }
-                    setAiSt("done");
-                  } catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
-                  e.target.value = "";
-                }} />
+
+          {/* Hidden file inputs */}
+          <input ref={fileInputRef} type="file" accept=".pdf,.docx,image/*" style={{ display: "none" }} onChange={handleFileExtract} />
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFileExtract} />
+
+          {srcType === "url" && (
+            <div style={{ display: "flex", gap: ".4rem", marginTop: ".5rem" }}>
+              <input className="fi" style={{ fontSize: ".88rem" }} type="url" placeholder="https://…" value={srcUrl} onChange={e => setSrcUrl(e.target.value)} />
+              <button type="button" className="btn btn-s btn-sm" onClick={handleExtractUrl}>{t.extractBtn}</button>
             </div>
-          </div>
-        )}
-        {aiSt === "extracting" && <div className="ai-st"><span className="spinner" />{t.extracting}</div>}
-        {aiSt === "done" && <div className="ai-st">✅ {t.extractDone}</div>}
-        {aiSt === "error" && <div className="ai-st" style={{ flexDirection: "column", alignItems: "flex-start", gap: ".2rem" }}>
-          <span>⚠️ {t.extractError}</span>
-          {aiErr && <span style={{ fontSize: ".75rem", color: THEME.brown, fontFamily: "monospace", wordBreak: "break-all" }}>{aiErr}</span>}
-        </div>}
-      </div>
+          )}
+          {srcType === "paste" && (
+            <div style={{ marginTop: ".5rem" }}>
+              <textarea className="fi" style={{ minHeight: 140, fontSize: ".85rem", marginBottom: ".5rem" }}
+                placeholder={t.pasteTextPh} value={pastedText} onChange={e => setPastedText(e.target.value)} />
+              <button type="button" className="btn btn-p btn-sm" onClick={handleExtractPaste} disabled={!pastedText.trim()}>{t.pasteExtractBtn}</button>
+            </div>
+          )}
+          {aiSt === "extracting" && <div className="ai-st"><span className="spinner" />{t.extracting}</div>}
+          {aiSt === "done" && <div className="ai-st">✅ {t.extractDone}</div>}
+          {aiSt === "error" && <div className="ai-st" style={{ flexDirection: "column", alignItems: "flex-start", gap: ".2rem" }}>
+            <span>⚠️ {t.extractError}</span>
+            {aiErr && <span style={{ fontSize: ".75rem", color: THEME.brown, fontFamily: "monospace", wordBreak: "break-all" }}>{aiErr}</span>}
+          </div>}
+        </div>
+      )}
       <div className="divider" />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".8rem" }}>
         <div style={{ flex: 1 }}>
@@ -192,11 +207,24 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
           </select>
         </div>
       </div>
-      <div className="field" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        <label style={{ minWidth: "fit-content" }}>{t.serves}</label>
-        <input className="fi" type="number" min="1" max="100" value={serves} onChange={e => setServes(e.target.value)} placeholder={t.servesPlaceholder} style={{ maxWidth: 100 }} />
+      <div className="field" style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+          <label style={{ minWidth: "fit-content", margin: 0 }}>{t.serves}</label>
+          <input className="fi" type="number" min="1" max="100" value={serves} onChange={e => { setServes(e.target.value); markDirty(); }} placeholder={t.servesPlaceholder} style={{ maxWidth: 80, margin: 0 }} />
+        </div>
+        <button type="button" className="btn btn-s btn-sm" onClick={() => { const tag = window.prompt(t.tagPh || "Add tag"); if (tag?.trim()) { setTags([...tags, tag.trim()]); markDirty(); } }}>
+          + {t.customTags || "Tags"}
+        </button>
+        {tags.length > 0 && (
+          <div style={{ display: "flex", gap: ".3rem", flexWrap: "wrap" }}>
+            {tags.map(tg => (
+              <span key={tg} className="tpill">{tg}
+                <button type="button" onClick={() => setTags(tags.filter(x => x !== tg))}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="field"><label>{t.customTags}</label><TagInput value={tags} onChange={setTags} placeholder={t.tagPh} /></div>
       <div className="divider" />
       <div className="field"><ImageInput images={images} onChange={setImages} label={t.recipeImages} /></div>
       <div className="divider" />
@@ -231,18 +259,20 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       <div className="field">
         <label>{t.steps}</label>
         {steps.map((step, idx) => (
-          <div key={step.id || idx} className="step-ed">
+          <div key={step.id || idx} className="step-ed" style={{ position: "relative" }}>
             <div className="step-ed-n">{t.stepLabel} {idx + 1}</div>
+            {steps.length > 1 && (
+              <button type="button" onClick={() => rmStep(step.id)}
+                style={{ position: "absolute", top: ".4rem", insetInlineEnd: ".4rem", background: "none", border: "none", cursor: "pointer", fontSize: "1rem", color: THEME.tan, lineHeight: 1, padding: "0 .2rem" }}>×</button>
+            )}
             <textarea style={{ width: "100%", border: "none", outline: "none", fontSize: ".9rem", fontFamily: "'Source Sans 3',sans-serif", resize: "vertical", minHeight: 60, background: "transparent" }}
-              placeholder={t.stepPh} value={step.text} onChange={e => upStep(step.id, "text", e.target.value)} />
+              placeholder={t.stepPh} value={step.text} onChange={e => { upStep(step.id, "text", e.target.value); markDirty(); }} />
             <div style={{ marginTop: ".4rem" }}><ImageInput images={step.images || []} onChange={imgs => upStep(step.id, "images", imgs)} maxImages={3} label={t.stepImage} /></div>
-            <div style={{ display: "flex", gap: ".4rem", marginTop: ".4rem" }}>
-              <button type="button" className="btn btn-s btn-sm" onClick={() => insertStepAfter(step.id)}>{t.insertStep}</button>
-              <button type="button" className="btn btn-d btn-sm" onClick={() => rmStep(step.id)}>−</button>
+            <div style={{ marginTop: ".4rem" }}>
+              <button type="button" className="btn btn-s btn-sm" onClick={() => insertStepAfter(step.id)}>{t.insertStep || "+ Add step below"}</button>
             </div>
           </div>
         ))}
-        <button type="button" className="le-add" onClick={addStep}>{t.addStep}</button>
       </div>
       <div className="divider" />
       <div className="field"><label>{t.notes}</label><textarea className="fi" value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.notesPh} style={{ minHeight: 90 }} /></div>
