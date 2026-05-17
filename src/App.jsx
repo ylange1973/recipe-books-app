@@ -371,11 +371,11 @@ export default function App() {
         )}
 
         {showRecipeForm && !isGuest && (
-          <div className="backdrop" onClick={e => e.target === e.currentTarget && (setShowRecipeForm(false), setEditRecipe(null))}>
+          <div className="backdrop" onClick={e => { if (e.target === e.currentTarget && window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) { setShowRecipeForm(false); setEditRecipe(null); } }}>
             <div className="modal" style={{ maxWidth: 760 }}>
               <div className="modal-hd">
                 <div className="modal-title">{editRecipe ? t.editRecipe : t.addRecipeTitle}</div>
-                <button className="btn btn-ic btn-s btn-sm" onClick={() => { setShowRecipeForm(false); setEditRecipe(null); }}>×</button>
+                <button className="btn btn-ic btn-s" style={{ fontSize: "1.4rem", width: 36, height: 36 }} onClick={() => { if (window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) { setShowRecipeForm(false); setEditRecipe(null); } }}>×</button>
               </div>
               <div className="modal-body">
                 <RecipeForm
