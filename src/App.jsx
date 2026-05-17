@@ -40,11 +40,27 @@ export default function App() {
   const [importStatus, setImportStatus] = useState("");
   const saveRef = useRef(null);
   const dirtyRef = useRef(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const unsavedResolveRef = useRef(null);
 
-  const confirmClose = () => {
-    if (dirtyRef.current && !window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) return false;
-    dirtyRef.current = false;
-    return true;
+  const confirmClose = () => new Promise(resolve => {
+    if (!dirtyRef.current) { resolve("exit"); return; }
+    unsavedResolveRef.current = resolve;
+    setShowUnsavedModal(true);
+  });
+
+  const handleUnsavedChoice = async (choice) => {
+    setShowUnsavedModal(false);
+    if (choice === "save") {
+      if (saveRef.current) await saveRef.current();
+      dirtyRef.current = false;
+      unsavedResolveRef.current?.("exit");
+    } else if (choice === "exit") {
+      dirtyRef.current = false;
+      unsavedResolveRef.current?.("exit");
+    } else {
+      unsavedResolveRef.current?.("cancel");
+    }
   };
 
   useEffect(() => {
@@ -378,11 +394,11 @@ export default function App() {
         )}
 
         {showRecipeForm && !isGuest && (
-          <div className="backdrop" onClick={e => { if (e.target === e.currentTarget && confirmClose()) { setShowRecipeForm(false); setEditRecipe(null); } }}>
+          <div className="backdrop" onClick={async e => { if (e.target === e.currentTarget && await confirmClose() === "exit") { setShowRecipeForm(false); setEditRecipe(null); } }}>
             <div className="modal" style={{ maxWidth: 760 }}>
               <div className="modal-hd">
                 <div className="modal-title">{editRecipe ? t.editRecipe : t.addRecipeTitle}</div>
-                <button className="btn btn-ic btn-s" style={{ fontSize: "1.4rem", width: 36, height: 36 }} onClick={() => { if (confirmClose()) { setShowRecipeForm(false); setEditRecipe(null); } }}>×</button>
+                <button className="btn btn-ic btn-s" style={{ fontSize: "1.4rem", width: 36, height: 36 }} onClick={async () => { if (await confirmClose() === "exit") { setShowRecipeForm(false); setEditRecipe(null); } }}>×</button>
               </div>
               <div className="modal-body">
                 <RecipeForm
@@ -390,9 +406,13 @@ export default function App() {
                   onSave={saveRecipe} currentUser={user} books={books} allUsers={users} t={t} saveRef={saveRef} dirtyRef={dirtyRef} />
               </div>
               <div className="modal-ft">
-                <button className="btn btn-s" onClick={() => { if (confirmClose()) { setShowRecipeForm(false); setEditRecipe(null); } }}>{t.cancel}</button>
-                <button className="btn btn-p" onClick={() => saveRef.current && saveRef.current()}>{t.saveRecipe}</button>
+                <button className="btn btn-s" onClick={async () => { if (await confirmClose() === "exit") { setShowRecipeForm(false); setEditRecipe(null); } }}>{t.cancel}</button>
               </div>
+              {/* Floating save button */}
+              <button className="btn btn-p" onClick={() => saveRef.current && saveRef.current()}
+                style={{ position: "fixed", bottom: "1.5rem", insetInlineEnd: "1.5rem", zIndex: 400, borderRadius: "50px", padding: ".7rem 1.4rem", boxShadow: "0 4px 16px rgba(44,26,14,.3)", fontSize: "1rem", display: "flex", alignItems: "center", gap: ".4rem" }}>
+                💾 {t.save || "Save"}
+              </button>
             </div>
           </div>
         )}
@@ -418,6 +438,21 @@ export default function App() {
               <div className="modal-ft">
                 <button className="btn btn-s" onClick={() => { setShowImport(false); setImportStatus(""); setImportJson(""); }}>Cancel</button>
                 <button className="btn btn-p" onClick={handleImport} disabled={!importJson.trim() || importStatus === "running"}>Import</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {showUnsavedModal && (
+          <div className="backdrop" style={{ zIndex: 500 }}>
+            <div className="modal" style={{ maxWidth: 360 }}>
+              <div className="modal-hd"><div className="modal-title">⚠️ {t.unsavedChanges || "Unsaved changes"}</div></div>
+              <div className="modal-body" style={{ padding: "1.2rem 1.5rem", textAlign: "center" }}>
+                <p style={{ marginBottom: "1.2rem", color: THEME.darkBrown, fontSize: ".95rem" }}>You have unsaved changes. What would you like to do?</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
+                  <button className="btn btn-p" style={{ justifyContent: "center" }} onClick={() => handleUnsavedChoice("save")}>💾 Save and exit</button>
+                  <button className="btn btn-d" style={{ justifyContent: "center" }} onClick={() => handleUnsavedChoice("exit")}>🗑 Exit without saving</button>
+                  <button className="btn btn-s" style={{ justifyContent: "center" }} onClick={() => handleUnsavedChoice("cancel")}>↩ Keep editing</button>
+                </div>
               </div>
             </div>
           </div>
