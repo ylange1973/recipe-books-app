@@ -275,7 +275,7 @@ export const UNIT_MAP = {
   "package":"pkg","packages":"pkg","packet":"pkt","packets":"pkt",
   "כף":"tbsp","כפות":"tbsp","כפית":"tsp","כפיות":"tsp",
   "כוס":"cup","כוסות":"cup","גרם":"g","ג":"g","קילוגרם":"kg","קג":"kg",
-  "מ\"ל":"ml","מיליליטר":"ml","ליטר":"l","צביטה":"pinch","קורט":"pinch","פרוסה":"slice","פרוסות":"slices",
+  "מ\"ל":"ml","מיליליטר":"ml","ליטר":"l","צביטה":"pinch","קורט":"pinch","פרוסה":"slice","פרוסות":"slices","מיכל":"tub","זילוף":"glug","ענף":"sprig","צרור":"bunch","גבעול":"stalk","עלה":"sheet","טיפה":"drop","קוביה":"knob","מעט":"splash","חופן":"handful","שן":"clove","שיניים":"cloves","פחית":"can","פחיות":"cans","חבילה":"pkg","יחידה":"pc","יחידות":"pcs","אונקיה":"oz","ליברה":"lb","גרם":"g","קילוגרם":"kg",
   "cuillère à soupe":"tbsp","cuillères à soupe":"tbsp","c. à s.":"tbsp","cas":"tbsp",
   "cuillère à café":"tsp","cuillères à café":"tsp","c. à c.":"tsp","cac":"tsp",
   "tasse":"cup","tasses":"cup","gramme":"g","grammes":"g","kilogramme":"kg","kilogrammes":"kg",
