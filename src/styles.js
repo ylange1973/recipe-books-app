@@ -79,7 +79,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .modal-hd{padding:1.5rem 2rem 1rem;border-bottom:1px solid ${THEME.parchment};display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:${THEME.cream};z-index:1;}
 .modal-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:${THEME.espresso};}
 .modal-body{padding:1.5rem 2rem;}
-.modal-ft{padding:1rem 2rem 1.5rem;display:flex;justify-content:flex-end;gap:.7rem;border-top:1px solid ${THEME.parchment};}
+.modal-ft{padding:1rem 2rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.7rem;border-top:1px solid ${THEME.parchment};position:sticky;bottom:0;background:${THEME.cream};z-index:10;}
 /* Recipe detail */
 .rdetail{max-width:780px;margin:0 auto;padding:2rem;}
 .rhero{width:100%;max-height:340px;object-fit:cover;border-radius:10px;margin-bottom:1.5rem;}

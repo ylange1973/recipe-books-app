@@ -405,14 +405,13 @@ export default function App() {
                   initial={editRecipe ? { ...editRecipe } : (selBook ? { bookIds: [selBook.id] } : {})}
                   onSave={saveRecipe} currentUser={user} books={books} allUsers={users} t={t} saveRef={saveRef} dirtyRef={dirtyRef} />
               </div>
-              <div className="modal-ft">
+              <div className="modal-ft" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <button className="btn btn-s" onClick={async () => { if (await confirmClose() === "exit") { setShowRecipeForm(false); setEditRecipe(null); } }}>{t.cancel}</button>
+                <button className="btn btn-p" onClick={() => saveRef.current && saveRef.current()}
+                  style={{ borderRadius: "50px", padding: ".7rem 1.6rem", boxShadow: "0 4px 12px rgba(44,26,14,.25)", fontSize: "1rem", display: "flex", alignItems: "center", gap: ".4rem" }}>
+                  💾 {t.save || "Save"}
+                </button>
               </div>
-              {/* Floating save button */}
-              <button className="btn btn-p" onClick={() => saveRef.current && saveRef.current()}
-                style={{ position: "fixed", bottom: "1.5rem", insetInlineEnd: "1.5rem", zIndex: 400, borderRadius: "50px", padding: ".7rem 1.4rem", boxShadow: "0 4px 16px rgba(44,26,14,.3)", fontSize: "1rem", display: "flex", alignItems: "center", gap: ".4rem" }}>
-                💾 {t.save || "Save"}
-              </button>
             </div>
           </div>
         )}
