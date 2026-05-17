@@ -1,117 +1,65 @@
-import mammoth from "mammoth";
+export const config = { maxDuration: 30 };
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { prompt, imageBase64, imageType, url, fileBase64, fileType } = req.body;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
 
   try {
-    let finalPrompt = prompt;
-    const content = [];
+    let userContent = [];
 
-    // ── URL fetch ────────────────────────────────────────────────────────────
+    // URL fetch: get page text first
     if (url) {
       try {
-        const pageRes = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          },
-          signal: AbortSignal.timeout(10000)
-        });
-        if (!pageRes.ok) {
-          return res.status(500).json({ error: `Could not access this URL (HTTP ${pageRes.status}). Try the Paste Text option instead.` });
-        }
+        const pageRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(10000) });
         const html = await pageRes.text();
-        const text = html
-          .replace(/<script[\s\S]*?<\/script>/gi, "")
-          .replace(/<style[\s\S]*?<\/style>/gi, "")
-          .replace(/<!--[\s\S]*?-->/g, "")
+        const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
           .replace(/<[^>]+>/g, " ")
-          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-          .replace(/&nbsp;/g, " ").replace(/&#\d+;/g, " ")
-          .replace(/\s+/g, " ").trim().slice(0, 12000);
-        if (text.length < 100) {
-          return res.status(500).json({ error: "Page fetched but no readable content found. Try Paste Text instead." });
-        }
-        finalPrompt = prompt + "\n\nPage content:\n" + text;
-      } catch (fetchErr) {
-        return res.status(500).json({ error: "Could not access this URL — the website may be blocking automated access. Try the Paste Text option instead." });
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 12000);
+        userContent.push({ type: "text", text: prompt + "\n\nPage content:\n" + text });
+      } catch {
+        userContent.push({ type: "text", text: prompt + "\n\n(Could not fetch page content from: " + url + ")" });
       }
     }
-
-    // ── File handling ────────────────────────────────────────────────────────
-    if (fileBase64 && fileType) {
-      if (fileType === "application/pdf") {
-        // Send PDF directly to Claude as a document — Claude can read PDFs natively
-        content.push({
-          type: "document",
-          source: { type: "base64", media_type: "application/pdf", data: fileBase64 }
-        });
-      } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        // Extract text from Word using mammoth
-        try {
-          const buffer = Buffer.from(fileBase64, "base64");
-          const result = await mammoth.extractRawText({ buffer });
-          const extractedText = result.value?.trim() || "";
-          if (!extractedText || extractedText.length < 50) {
-            return res.status(500).json({ error: "Could not extract text from this Word file. Try copying the text and using Paste Text instead." });
-          }
-          finalPrompt = prompt + "\n\nFile content:\n" + extractedText.slice(0, 12000);
-        } catch (wordErr) {
-          return res.status(500).json({ error: "Error reading Word file: " + wordErr.message });
-        }
-      } else if (fileType === "application/msword") {
-        return res.status(400).json({ error: "Old .doc format not supported. Please save as .docx and try again." });
-      } else if (fileType.startsWith("image/")) {
-        // Image handled below via imageBase64
-      } else {
-        return res.status(400).json({ error: "Unsupported file type. Please use PDF, Word (.docx) or an image." });
-      }
+    // Image extraction
+    else if (imageBase64) {
+      userContent.push({ type: "image", source: { type: "base64", media_type: imageType || "image/jpeg", data: imageBase64 } });
+      userContent.push({ type: "text", text: prompt });
+    }
+    // File extraction (PDF/docx passed as base64)
+    else if (fileBase64) {
+      userContent.push({ type: "text", text: prompt + "\n\n[File content (base64, type: " + fileType + ") attached — extract recipe from it.]" });
+    }
+    // Plain text prompt
+    else {
+      userContent.push({ type: "text", text: prompt });
     }
 
-    // ── Image ────────────────────────────────────────────────────────────────
-    if (imageBase64) {
-      content.push({
-        type: "image",
-        source: { type: "base64", media_type: imageType || "image/jpeg", data: imageBase64 }
-      });
-    }
-
-    content.push({ type: "text", text: finalPrompt });
-
-    // ── Call Claude ──────────────────────────────────────────────────────────
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 2048,
-        messages: [{ role: "user", content }]
-      })
+        model: imageBase64 ? "claude-sonnet-4-20250514" : "claude-haiku-4-5",
+        max_tokens: 4096,
+        messages: [{ role: "user", content: userContent }],
+      }),
     });
 
-    const raw = await response.text();
-    let data;
-    try { data = JSON.parse(raw); }
-    catch { return res.status(500).json({ error: "HTTP " + response.status + ": " + raw.slice(0, 200) }); }
+    const data = await response.json();
+    if (!response.ok) return res.status(500).json({ error: data.error?.message || "API error" });
 
-    if (data.error) return res.status(500).json({ error: data.error.message || JSON.stringify(data.error) });
-    const text = data.content?.map(b => b.text || "").join("") || "";
-    return res.status(200).json({ text });
-
+    const text = data.content?.find(b => b.type === "text")?.text || "";
+    res.status(200).json({ text });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message });
   }
 }
