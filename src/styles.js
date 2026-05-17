@@ -76,7 +76,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 /* Modal */
 .backdrop{position:fixed;inset:0;background:rgba(44,26,14,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;}
 .modal{background:${THEME.cream};border-radius:12px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(44,26,14,.25);border:1px solid ${THEME.parchment};direction:${d};}
-.modal-hd{padding:1.5rem 2rem 1rem;border-bottom:1px solid ${THEME.parchment};display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:${THEME.cream};z-index:1;}
+.modal-hd{padding:1.5rem 2rem 1rem;border-bottom:1px solid ${THEME.parchment};display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:${THEME.cream};z-index:50;}
 .modal-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:${THEME.espresso};}
 .modal-body{padding:1.5rem 2rem;}
 .modal-ft{padding:1rem 2rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.7rem;border-top:1px solid ${THEME.parchment};position:sticky;bottom:0;background:${THEME.cream};z-index:10;}
