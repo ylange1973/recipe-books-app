@@ -39,6 +39,13 @@ export default function App() {
   const [importJson, setImportJson] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const saveRef = useRef(null);
+  const dirtyRef = useRef(false);
+
+  const confirmClose = () => {
+    if (dirtyRef.current && !window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) return false;
+    dirtyRef.current = false;
+    return true;
+  };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async fbUser => {
@@ -264,7 +271,7 @@ export default function App() {
                 } else {
                   setEditRecipe(selRecipe);
                 }
-                setShowRecipeForm(true);
+                setShowRecipeForm(true); dirtyRef.current = false;
               }}
               onDelete={() => deleteRecipe(selRecipe.id)}
               onTrackOpen={updated => { setSelRecipe(updated); setRecipes(recipes.map(r => r.id === updated.id ? updated : r)); }}
@@ -302,7 +309,7 @@ export default function App() {
                 <div className="page">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
                     <div className="pt" style={{ fontSize: "1.3rem" }}>{t.recipesInBook}</div>
-                    {!isGuest && <button className="btn btn-p btn-sm" onClick={() => setShowRecipeForm(true)}>{t.addRecipe}</button>}
+                    {!isGuest && <button className="btn btn-p btn-sm" onClick={() => { setShowRecipeForm(true); dirtyRef.current = false; }}>{t.addRecipe}</button>}
                   </div>
                   {bookRecipes.length === 0
                     ? <div className="empty"><div className="empty-icon">🍳</div><div className="empty-txt">{t.noRecipes}</div></div>
@@ -331,7 +338,7 @@ export default function App() {
                 <>
                   <div className="ph">
                     <div><div className="pt">{t.allRecipes}</div><div className="ps">{recipes.length} {recipes.length === 1 ? t.recipeWord : t.recipesWord}</div></div>
-                    {!isGuest && <button className="btn btn-p" onClick={() => { setEditRecipe(null); setShowRecipeForm(true); }}>{t.addRecipe}</button>}
+                    {!isGuest && <button className="btn btn-p" onClick={() => { setEditRecipe(null); setShowRecipeForm(true); dirtyRef.current = false; }}>{t.addRecipe}</button>}
                   </div>
                   <div className="search-bar">
                     <span>🔍</span>
@@ -371,23 +378,19 @@ export default function App() {
         )}
 
         {showRecipeForm && !isGuest && (
-          <div className="backdrop" onClick={e => { if (e.target === e.currentTarget && window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) { setShowRecipeForm(false); setEditRecipe(null); } }}>
+          <div className="backdrop" onClick={e => { if (e.target === e.currentTarget && confirmClose()) { setShowRecipeForm(false); setEditRecipe(null); } }}>
             <div className="modal" style={{ maxWidth: 760 }}>
               <div className="modal-hd">
                 <div className="modal-title">{editRecipe ? t.editRecipe : t.addRecipeTitle}</div>
-                <button className="btn btn-ic btn-s" style={{ fontSize: "1.4rem", width: 36, height: 36 }} onClick={() => { if (window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) { setShowRecipeForm(false); setEditRecipe(null); } }}>×</button>
+                <button className="btn btn-ic btn-s" style={{ fontSize: "1.4rem", width: 36, height: 36 }} onClick={() => { if (confirmClose()) { setShowRecipeForm(false); setEditRecipe(null); } }}>×</button>
               </div>
               <div className="modal-body">
                 <RecipeForm
                   initial={editRecipe ? { ...editRecipe } : (selBook ? { bookIds: [selBook.id] } : {})}
-                  onSave={saveRecipe} currentUser={user} books={books} allUsers={users} t={t} saveRef={saveRef} />
+                  onSave={saveRecipe} currentUser={user} books={books} allUsers={users} t={t} saveRef={saveRef} dirtyRef={dirtyRef} />
               </div>
               <div className="modal-ft">
-                <button className="btn btn-s" onClick={() => {
-                  if (window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) {
-                    setShowRecipeForm(false); setEditRecipe(null);
-                  }
-                }}>{t.cancel}</button>
+                <button className="btn btn-s" onClick={() => { if (confirmClose()) { setShowRecipeForm(false); setEditRecipe(null); } }}>{t.cancel}</button>
                 <button className="btn btn-p" onClick={() => saveRef.current && saveRef.current()}>{t.saveRecipe}</button>
               </div>
             </div>

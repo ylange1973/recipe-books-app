@@ -5,7 +5,8 @@ import { callAI, extractJSON, extractFromPastedText, extractAndTranslate, RECIPE
 import ImageInput from "./ImageInput.jsx";
 import TagInput from "./TagInput.jsx";
 
-export default function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef }) {
+export default function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef, dirtyRef }) {
+  const isMobile = navigator.maxTouchPoints > 0;
   const [name, setName] = useState(initial?.name || "");
   const [desc, setDesc] = useState(initial?.description || "");
   const [foodType, setFoodType] = useState(initial?.foodType || "");
@@ -30,7 +31,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   const fileInputRef = useRef();
   const cameraInputRef = useRef();
 
-  const markDirty = () => setIsDirty(true);
+  const markDirty = () => { setIsDirty(true); if (dirtyRef) dirtyRef.current = true; };
 
   const applyExtracted = r => {
     if (r.name) setName(r.name);
@@ -83,8 +84,8 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   };
 
   const addIng = () => setIngs([...ings, { id: uid(), amount: "", unit: "", name: "" }]);
-  const upIng = (id, f, v) => setIngs(ings.map(i => i.id === id ? { ...i, [f]: v } : i));
-  const rmIng = id => setIngs(ings.filter(i => i.id !== id));
+  const upIng = (id, f, v) => { setIngs(ings.map(i => i.id === id ? { ...i, [f]: v } : i)); markDirty(); };
+  const rmIng = id => { setIngs(ings.filter(i => i.id !== id)); markDirty(); };
   const insertSectionAbove = id => {
     const idx = ings.findIndex(i => i.id === id); if (idx === -1) return;
     const sec = { id: uid(), type: "section", title: "" };
@@ -131,7 +132,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
                   { key: "url",   label: "🔗 URL" },
                   { key: "paste", label: t.pasteText },
                   { key: "file",  label: t.fileImport || "📄 File" },
-                  { key: "cam",   label: t.camera || "📷 Camera" },
+                  ...(isMobile ? [{ key: "cam", label: t.camera || "📷 Camera" }] : []),
                 ].map(({ key, label }, i) => (
                   <button key={key} type="button"
                     onClick={() => {
@@ -176,25 +177,25 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".8rem" }}>
         <div style={{ flex: 1 }}>
           <label style={{ display: "block", fontSize: ".78rem", fontWeight: 600, color: THEME.darkBrown, marginBottom: ".3rem", textTransform: "uppercase", letterSpacing: ".05em" }}>{t.recipeName}</label>
-          <input className="fi" style={{ margin: 0 }} value={name} onChange={e => setName(e.target.value)} placeholder={t.recipeNamePh} />
+          <input className="fi" style={{ margin: 0 }} value={name} onChange={e => { setName(e.target.value); markDirty(); }} placeholder={t.recipeNamePh} />
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: ".4rem", cursor: "pointer", marginLeft: "1rem", flexShrink: 0, fontSize: ".85rem", color: THEME.brown }}>
-          <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} style={{ accentColor: THEME.rust, width: 16, height: 16, cursor: "pointer" }} />
+          <input type="checkbox" checked={isPrivate} onChange={e => { setIsPrivate(e.target.checked); markDirty(); }} style={{ accentColor: THEME.rust, width: 16, height: 16, cursor: "pointer" }} />
           🔒 {t.privateRecipe}
         </label>
       </div>
-      <div className="field"><label>{t.description}</label><textarea className="fi" value={desc} onChange={e => setDesc(e.target.value)} placeholder={t.descPh} /></div>
+      <div className="field"><label>{t.description}</label><textarea className="fi" value={desc} onChange={e => { setDesc(e.target.value); markDirty(); }} placeholder={t.descPh} /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".8rem" }}>
         <div className="field">
           <label>{t.foodType}</label>
-          <select className="fi" value={foodType} onChange={e => setFoodType(e.target.value)}>
+          <select className="fi" value={foodType} onChange={e => { setFoodType(e.target.value); markDirty(); }}>
             <option value="">{t.selectOpt}</option>
             {t.FOOD_TYPES.map(f => <option key={f}>{f}</option>)}
           </select>
         </div>
         <div className="field">
           <label>{t.difficulty}</label>
-          <select className="fi" value={diff} onChange={e => setDiff(e.target.value)}>
+          <select className="fi" value={diff} onChange={e => { setDiff(e.target.value); markDirty(); }}>
             <option value="">{t.selectOpt}</option>
             {t.DIFFICULTIES.map(d => <option key={d}>{d}</option>)}
           </select>
@@ -219,7 +220,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
         )}
       </div>
       <div className="divider" />
-      <div className="field"><ImageInput images={images} onChange={setImages} label={t.recipeImages} /></div>
+      <div className="field"><ImageInput images={images} onChange={imgs => { setImages(imgs); markDirty(); }} label={t.recipeImages} /></div>
       <div className="divider" />
       <div className="field">
         <label>{t.ingredients}</label>
@@ -268,7 +269,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
         ))}
       </div>
       <div className="divider" />
-      <div className="field"><label>{t.notes}</label><textarea className="fi" value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.notesPh} style={{ minHeight: 90 }} /></div>
+      <div className="field"><label>{t.notes}</label><textarea className="fi" value={notes} onChange={e => { setNotes(e.target.value); markDirty(); }} placeholder={t.notesPh} style={{ minHeight: 90 }} /></div>
       <div className="divider" />
       <div className="field">
         <label>{t.addToBooks}</label>
