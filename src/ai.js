@@ -59,7 +59,9 @@ export async function extractAndTranslate(source, type, targetLang) {
     "- If any text is unclear or unreadable, skip it rather than guessing",
   ].join("\n");
   const raw = await callAI(prompt, b64, mime);
-  return extractJSON(raw);
+  const data = extractJSON(raw);
+  data.description = ""; // never trust AI-generated description from images
+  return data;
 }
 
 export async function translateRecipe(recipe, targetLang) {
