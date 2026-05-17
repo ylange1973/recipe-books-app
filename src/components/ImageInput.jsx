@@ -4,6 +4,7 @@ import { uid, compressImage, readFileAsDataURL } from "../utils.js";
 
 export default function ImageInput({ images = [], onChange, maxImages = 10, label = "" }) {
   const [uploading, setUploading] = useState(false);
+  const [showOpts, setShowOpts] = useState(false);
   const fileRef = useRef();
   const camRef = useRef();
 
@@ -29,15 +30,29 @@ export default function ImageInput({ images = [], onChange, maxImages = 10, labe
   return (
     <div>
       {label && <div className="sl">{label}</div>}
-      <div style={{ display: "flex", gap: ".5rem", marginBottom: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
-        <button type="button" className="btn btn-s btn-sm" onClick={() => !atLimit && fileRef.current.click()}
-          disabled={atLimit} style={{ opacity: atLimit ? 0.4 : 1, cursor: atLimit ? "not-allowed" : "pointer" }}>📁 Upload</button>
-        <button type="button" className="btn btn-s btn-sm" onClick={() => !atLimit && camRef.current.click()}
-          disabled={atLimit} style={{ opacity: atLimit ? 0.4 : 1, cursor: atLimit ? "not-allowed" : "pointer" }}>📷 Camera</button>
+      <div style={{ position: "relative", display: "inline-block", marginBottom: ".5rem" }}>
+        <button type="button" className="btn btn-s btn-sm"
+          disabled={atLimit}
+          style={{ opacity: atLimit ? 0.4 : 1, cursor: atLimit ? "not-allowed" : "pointer" }}
+          onClick={() => !atLimit && setShowOpts(v => !v)}>
+          📷 {label ? "Add image" : "Add image"}
+        </button>
+        {showOpts && !atLimit && (
+          <div style={{ position: "absolute", top: "calc(100% + 4px)", insetInlineStart: 0, background: "#fff", border: `1px solid ${THEME.tan}`, borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)", zIndex: 300, minWidth: 140 }}>
+            <button type="button" onClick={() => { setShowOpts(false); fileRef.current.click(); }}
+              style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif" }}>
+              📁 File / Gallery
+            </button>
+            <button type="button" onClick={() => { setShowOpts(false); camRef.current.click(); }}
+              style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif", borderTop: `1px solid ${THEME.parchment}` }}>
+              📷 Camera
+            </button>
+          </div>
+        )}
         <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleFiles} />
         <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleFiles} />
-        {atLimit && <span style={{ fontSize: ".78rem", color: THEME.rust }}>Max {maxImages} images reached — remove one to add more.</span>}
       </div>
+      {atLimit && <div style={{ fontSize: ".78rem", color: THEME.rust, marginBottom: ".4rem" }}>Max {maxImages} images reached — remove one to add more.</div>}
       {uploading && <div style={{ fontSize: ".8rem", color: THEME.brown, marginBottom: ".4rem" }}>⏳ Processing image…</div>}
       {images.length > 0 && (
         <div className="img-previews">

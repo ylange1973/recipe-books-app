@@ -9,7 +9,7 @@ export const buildCSS = (rtl) => {
 body{font-family:'Source Sans 3',sans-serif;background:${THEME.cream};color:${THEME.espresso};direction:${d};}
 .app{min-height:100vh;display:flex;flex-direction:column;}
 /* Topbar */
-.topbar{background:${THEME.espresso};color:${THEME.parchment};padding:0 1rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(44,26,14,.18);overflow:hidden;}
+.topbar{background:${THEME.espresso};color:${THEME.parchment};padding:0 1rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(44,26,14,.18);}
 .logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:${THEME.gold};display:flex;align-items:center;gap:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1;}
 .logo-text{display:none;}
 @media(min-width:480px){.logo-text{display:inline;}}
@@ -76,10 +76,10 @@ textarea.fi{resize:vertical;min-height:80px;}
 /* Modal */
 .backdrop{position:fixed;inset:0;background:rgba(44,26,14,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;}
 .modal{background:${THEME.cream};border-radius:12px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(44,26,14,.25);border:1px solid ${THEME.parchment};direction:${d};}
-.modal-hd{padding:1.5rem 2rem 1rem;border-bottom:1px solid ${THEME.parchment};display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:${THEME.cream};z-index:1;}
+.modal-hd{padding:1.5rem 2rem 1rem;border-bottom:1px solid ${THEME.parchment};display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:${THEME.cream};z-index:50;}
 .modal-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:${THEME.espresso};}
 .modal-body{padding:1.5rem 2rem;}
-.modal-ft{padding:1rem 2rem 1.5rem;display:flex;justify-content:flex-end;gap:.7rem;border-top:1px solid ${THEME.parchment};}
+.modal-ft{padding:1rem 2rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.7rem;border-top:1px solid ${THEME.parchment};position:sticky;bottom:0;background:${THEME.cream};z-index:10;}
 /* Recipe detail */
 .rdetail{max-width:780px;margin:0 auto;padding:2rem;}
 .rhero{width:100%;max-height:340px;object-fit:cover;border-radius:10px;margin-bottom:1.5rem;}

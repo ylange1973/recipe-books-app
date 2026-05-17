@@ -5,7 +5,8 @@ import { callAI, extractJSON, extractFromPastedText, extractAndTranslate, RECIPE
 import ImageInput from "./ImageInput.jsx";
 import TagInput from "./TagInput.jsx";
 
-export default function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef }) {
+export default function RecipeForm({ initial, onSave, currentUser, books, allUsers, t, saveRef, dirtyRef }) {
+  const isMobile = navigator.maxTouchPoints > 0;
   const [name, setName] = useState(initial?.name || "");
   const [desc, setDesc] = useState(initial?.description || "");
   const [foodType, setFoodType] = useState(initial?.foodType || "");
@@ -25,19 +26,12 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   const [aiSt, setAiSt] = useState("");
   const [aiErr, setAiErr] = useState("");
   const [fileInfo, setFileInfo] = useState(null);
-  const [extImgSrc, setExtImgSrc] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const fileInputRef = useRef();
   const cameraInputRef = useRef();
 
-  // Track any change as dirty
-  const markDirty = () => setIsDirty(true);
-
-  const handleCancel = () => {
-    if (isDirty && !window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) return;
-    onCancel();
-  };
+  const markDirty = () => { setIsDirty(true); if (dirtyRef) dirtyRef.current = true; };
 
   const applyExtracted = r => {
     if (r.name) setName(r.name);
@@ -89,25 +83,14 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
   };
 
-  const handleExtractImg = e => {
-    const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader(); r.onload = async ev => {
-      const compressed = await compressImage(ev.target.result, 1200, 0.8);
-      setExtImgSrc(compressed); setAiSt("extracting");
-      try { applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en")); setAiSt("done"); }
-      catch (err) { setAiSt("error"); }
-    }; r.readAsDataURL(f); e.target.value = "";
-  };
-
   const addIng = () => setIngs([...ings, { id: uid(), amount: "", unit: "", name: "" }]);
-  const upIng = (id, f, v) => setIngs(ings.map(i => i.id === id ? { ...i, [f]: v } : i));
-  const rmIng = id => setIngs(ings.filter(i => i.id !== id));
+  const upIng = (id, f, v) => { setIngs(ings.map(i => i.id === id ? { ...i, [f]: v } : i)); markDirty(); };
+  const rmIng = id => { setIngs(ings.filter(i => i.id !== id)); markDirty(); };
   const insertSectionAbove = id => {
     const idx = ings.findIndex(i => i.id === id); if (idx === -1) return;
     const sec = { id: uid(), type: "section", title: "" };
     const next = [...ings]; next.splice(idx, 0, sec); setIngs(next);
   };
-  const addStep = () => setSteps([...steps, { id: uid(), text: "", images: [] }]);
   const insertStepAfter = id => {
     const idx = steps.findIndex(s => s.id === id); if (idx === -1) return;
     const next = [...steps]; next.splice(idx + 1, 0, { id: uid(), text: "", images: [] }); setSteps(next);
@@ -124,7 +107,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       ingredients: ings.filter(i => i.type === "section" ? i.title.trim() : i.name.trim()),
       steps: steps.filter(s => s.text.trim()),
       notes, serves, isPrivate, images, bookIds,
-      source: { type: srcType, url: srcType === "url" ? srcUrl : "", imageThumb: extImgSrc || "" },
+      source: { type: srcType, url: srcType === "url" ? srcUrl : "" },
       ownerId: initial?.ownerId || currentUser.id,
       originalLang: initial?.originalLang || currentUser.lang || "en",
       editPerms: perms,
@@ -137,19 +120,31 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
 
   return (
     <div>
-      {/* Import button — only show when adding new recipe */}
-      {!initial && (
-        <div className="field">
-          <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
+      {/* Import button — show when adding new recipe or editing existing */}
+      <div className="field">
+          <div style={{ position: "relative", display: "inline-block" }}>
             <button type="button" className="btn btn-s" onClick={() => setShowImport(v => !v)}>
               ✨ {t.importBtn || "Import"}
             </button>
             {showImport && (
-              <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("url"); setShowImport(false); }}>🔗 {t.website}</button>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("paste"); setShowImport(false); }}>📋 {t.pasteText}</button>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("file"); fileInputRef.current?.click(); setShowImport(false); }}>📄 {t.fileImport}</button>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("file"); cameraInputRef.current?.click(); setShowImport(false); }}>📷 {t.camera || "Camera"}</button>
+              <div style={{ position: "absolute", top: "calc(100% + 4px)", insetInlineStart: 0, background: "#fff", border: `1px solid ${THEME.tan}`, borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)", zIndex: 300, minWidth: 160 }}>
+                {[
+                  { key: "url",   label: "🔗 URL" },
+                  { key: "paste", label: t.pasteText },
+                  { key: "file",  label: t.fileImport || "📄 File" },
+                  ...(isMobile ? [{ key: "cam", label: t.camera || "📷 Camera" }] : []),
+                ].map(({ key, label }, i) => (
+                  <button key={key} type="button"
+                    onClick={() => {
+                      setShowImport(false);
+                      if (key === "file") { setSrcType("file"); fileInputRef.current?.click(); }
+                      else if (key === "cam") { setSrcType("file"); cameraInputRef.current?.click(); }
+                      else setSrcType(key);
+                    }}
+                    style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", borderTop: i > 0 ? `1px solid ${THEME.parchment}` : "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif" }}>
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -178,30 +173,29 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
             {aiErr && <span style={{ fontSize: ".75rem", color: THEME.brown, fontFamily: "monospace", wordBreak: "break-all" }}>{aiErr}</span>}
           </div>}
         </div>
-      )}
       <div className="divider" />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".8rem" }}>
         <div style={{ flex: 1 }}>
           <label style={{ display: "block", fontSize: ".78rem", fontWeight: 600, color: THEME.darkBrown, marginBottom: ".3rem", textTransform: "uppercase", letterSpacing: ".05em" }}>{t.recipeName}</label>
-          <input className="fi" style={{ margin: 0 }} value={name} onChange={e => setName(e.target.value)} placeholder={t.recipeNamePh} />
+          <input className="fi" style={{ margin: 0 }} value={name} onChange={e => { setName(e.target.value); markDirty(); }} placeholder={t.recipeNamePh} />
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: ".4rem", cursor: "pointer", marginLeft: "1rem", flexShrink: 0, fontSize: ".85rem", color: THEME.brown }}>
-          <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} style={{ accentColor: THEME.rust, width: 16, height: 16, cursor: "pointer" }} />
+          <input type="checkbox" checked={isPrivate} onChange={e => { setIsPrivate(e.target.checked); markDirty(); }} style={{ accentColor: THEME.rust, width: 16, height: 16, cursor: "pointer" }} />
           🔒 {t.privateRecipe}
         </label>
       </div>
-      <div className="field"><label>{t.description}</label><textarea className="fi" value={desc} onChange={e => setDesc(e.target.value)} placeholder={t.descPh} /></div>
+      <div className="field"><label>{t.description}</label><textarea className="fi" value={desc} onChange={e => { setDesc(e.target.value); markDirty(); }} placeholder={t.descPh} /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".8rem" }}>
         <div className="field">
           <label>{t.foodType}</label>
-          <select className="fi" value={foodType} onChange={e => setFoodType(e.target.value)}>
+          <select className="fi" value={foodType} onChange={e => { setFoodType(e.target.value); markDirty(); }}>
             <option value="">{t.selectOpt}</option>
             {t.FOOD_TYPES.map(f => <option key={f}>{f}</option>)}
           </select>
         </div>
         <div className="field">
           <label>{t.difficulty}</label>
-          <select className="fi" value={diff} onChange={e => setDiff(e.target.value)}>
+          <select className="fi" value={diff} onChange={e => { setDiff(e.target.value); markDirty(); }}>
             <option value="">{t.selectOpt}</option>
             {t.DIFFICULTIES.map(d => <option key={d}>{d}</option>)}
           </select>
@@ -226,7 +220,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
         )}
       </div>
       <div className="divider" />
-      <div className="field"><ImageInput images={images} onChange={setImages} label={t.recipeImages} /></div>
+      <div className="field"><ImageInput images={images} onChange={imgs => { setImages(imgs); markDirty(); }} label={t.recipeImages} /></div>
       <div className="divider" />
       <div className="field">
         <label>{t.ingredients}</label>
@@ -275,7 +269,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
         ))}
       </div>
       <div className="divider" />
-      <div className="field"><label>{t.notes}</label><textarea className="fi" value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.notesPh} style={{ minHeight: 90 }} /></div>
+      <div className="field"><label>{t.notes}</label><textarea className="fi" value={notes} onChange={e => { setNotes(e.target.value); markDirty(); }} placeholder={t.notesPh} style={{ minHeight: 90 }} /></div>
       <div className="divider" />
       <div className="field">
         <label>{t.addToBooks}</label>
