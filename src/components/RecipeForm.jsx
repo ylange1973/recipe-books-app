@@ -25,19 +25,12 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   const [aiSt, setAiSt] = useState("");
   const [aiErr, setAiErr] = useState("");
   const [fileInfo, setFileInfo] = useState(null);
-  const [extImgSrc, setExtImgSrc] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const fileInputRef = useRef();
   const cameraInputRef = useRef();
 
-  // Track any change as dirty
   const markDirty = () => setIsDirty(true);
-
-  const handleCancel = () => {
-    if (isDirty && !window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) return;
-    onCancel();
-  };
 
   const applyExtracted = r => {
     if (r.name) setName(r.name);
@@ -89,16 +82,6 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
   };
 
-  const handleExtractImg = e => {
-    const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader(); r.onload = async ev => {
-      const compressed = await compressImage(ev.target.result, 1200, 0.8);
-      setExtImgSrc(compressed); setAiSt("extracting");
-      try { applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en")); setAiSt("done"); }
-      catch (err) { setAiSt("error"); }
-    }; r.readAsDataURL(f); e.target.value = "";
-  };
-
   const addIng = () => setIngs([...ings, { id: uid(), amount: "", unit: "", name: "" }]);
   const upIng = (id, f, v) => setIngs(ings.map(i => i.id === id ? { ...i, [f]: v } : i));
   const rmIng = id => setIngs(ings.filter(i => i.id !== id));
@@ -107,7 +90,6 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     const sec = { id: uid(), type: "section", title: "" };
     const next = [...ings]; next.splice(idx, 0, sec); setIngs(next);
   };
-  const addStep = () => setSteps([...steps, { id: uid(), text: "", images: [] }]);
   const insertStepAfter = id => {
     const idx = steps.findIndex(s => s.id === id); if (idx === -1) return;
     const next = [...steps]; next.splice(idx + 1, 0, { id: uid(), text: "", images: [] }); setSteps(next);
@@ -124,7 +106,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       ingredients: ings.filter(i => i.type === "section" ? i.title.trim() : i.name.trim()),
       steps: steps.filter(s => s.text.trim()),
       notes, serves, isPrivate, images, bookIds,
-      source: { type: srcType, url: srcType === "url" ? srcUrl : "", imageThumb: extImgSrc || "" },
+      source: { type: srcType, url: srcType === "url" ? srcUrl : "" },
       ownerId: initial?.ownerId || currentUser.id,
       originalLang: initial?.originalLang || currentUser.lang || "en",
       editPerms: perms,
@@ -137,9 +119,8 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
 
   return (
     <div>
-      {/* Import button — only show when adding new recipe */}
-      {!initial && (
-        <div className="field">
+      {/* Import button — show when adding new recipe or editing existing */}
+      <div className="field">
           <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
             <button type="button" className="btn btn-s" onClick={() => setShowImport(v => !v)}>
               ✨ {t.importBtn || "Import"}
@@ -178,7 +159,6 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
             {aiErr && <span style={{ fontSize: ".75rem", color: THEME.brown, fontFamily: "monospace", wordBreak: "break-all" }}>{aiErr}</span>}
           </div>}
         </div>
-      )}
       <div className="divider" />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".8rem" }}>
         <div style={{ flex: 1 }}>
