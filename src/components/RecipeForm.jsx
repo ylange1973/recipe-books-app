@@ -128,11 +128,11 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
             {showImport && (
               <div style={{ position: "absolute", top: "calc(100% + 4px)", insetInlineStart: 0, background: "#fff", border: `1px solid ${THEME.tan}`, borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)", zIndex: 300, minWidth: 160 }}>
                 {[
-                  { key: "url",   icon: "🔗", label: "URL" },
-                  { key: "paste", icon: "📋", label: t.pasteText },
-                  { key: "file",  icon: "📄", label: t.fileImport || "File" },
-                  { key: "cam",   icon: "📷", label: t.camera || "Camera" },
-                ].map(({ key, icon, label }, i) => (
+                  { key: "url",   label: "🔗 URL" },
+                  { key: "paste", label: t.pasteText },
+                  { key: "file",  label: t.fileImport || "📄 File" },
+                  { key: "cam",   label: t.camera || "📷 Camera" },
+                ].map(({ key, label }, i) => (
                   <button key={key} type="button"
                     onClick={() => {
                       setShowImport(false);
@@ -140,8 +140,8 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
                       else if (key === "cam") { setSrcType("file"); cameraInputRef.current?.click(); }
                       else setSrcType(key);
                     }}
-                    style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", borderTop: i > 0 ? `1px solid ${THEME.parchment}` : "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif", display: "flex", alignItems: "center", gap: ".5rem" }}>
-                    <span>{icon}</span><span>{label}</span>
+                    style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", borderTop: i > 0 ? `1px solid ${THEME.parchment}` : "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif" }}>
+                    {label}
                   </button>
                 ))}
               </div>
