@@ -121,16 +121,29 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     <div>
       {/* Import button — show when adding new recipe or editing existing */}
       <div className="field">
-          <div style={{ display: "flex", gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ position: "relative", display: "inline-block" }}>
             <button type="button" className="btn btn-s" onClick={() => setShowImport(v => !v)}>
               ✨ {t.importBtn || "Import"}
             </button>
             {showImport && (
-              <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("url"); setShowImport(false); }}>🔗 {t.website}</button>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("paste"); setShowImport(false); }}>📋 {t.pasteText}</button>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("file"); fileInputRef.current?.click(); setShowImport(false); }}>📄 {t.fileImport}</button>
-                <button type="button" className="btn btn-s btn-sm" onClick={() => { setSrcType("file"); cameraInputRef.current?.click(); setShowImport(false); }}>📷 {t.camera || "Camera"}</button>
+              <div style={{ position: "absolute", top: "calc(100% + 4px)", insetInlineStart: 0, background: "#fff", border: `1px solid ${THEME.tan}`, borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)", zIndex: 300, minWidth: 160 }}>
+                {[
+                  { key: "url",   icon: "🔗", label: "URL" },
+                  { key: "paste", icon: "📋", label: t.pasteText },
+                  { key: "file",  icon: "📄", label: t.fileImport || "File" },
+                  { key: "cam",   icon: "📷", label: t.camera || "Camera" },
+                ].map(({ key, icon, label }, i) => (
+                  <button key={key} type="button"
+                    onClick={() => {
+                      setShowImport(false);
+                      if (key === "file") { setSrcType("file"); fileInputRef.current?.click(); }
+                      else if (key === "cam") { setSrcType("file"); cameraInputRef.current?.click(); }
+                      else setSrcType(key);
+                    }}
+                    style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", borderTop: i > 0 ? `1px solid ${THEME.parchment}` : "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif", display: "flex", alignItems: "center", gap: ".5rem" }}>
+                    <span>{icon}</span><span>{label}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
