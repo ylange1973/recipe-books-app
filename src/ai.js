@@ -50,7 +50,14 @@ export async function extractAndTranslate(source, type, targetLang) {
 
   const b64 = source.split(",")[1];
   const mime = source.split(";")[0].split(":")[1] || "image/jpeg";
-  const prompt = `${shapeInstr}\n\nExtract the recipe from this image.`;
+  const prompt = [
+    shapeInstr,
+    "\nExtract the recipe from this image. Important rules:",
+    "- The 'name' field must be the recipe name only — not the author name, book title, or any other text",
+    "- The 'description' field must only contain text explicitly written as a description in the source — if no description exists, return an empty string",
+    "- Do NOT invent or infer any information not clearly visible in the image",
+    "- If any text is unclear or unreadable, skip it rather than guessing",
+  ].join("\n");
   const raw = await callAI(prompt, b64, mime);
   return extractJSON(raw);
 }
