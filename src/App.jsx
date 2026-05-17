@@ -217,7 +217,10 @@ export default function App() {
   const visibleRecipes = recipes.filter(r => !r.isPrivate || r.ownerId === user?.id);
   const myLikedIds = new Set(likes.filter(l => l.userId === user?.id).map(l => l.recipeId));
   const filtered = visibleRecipes.filter(r => {
-    const ms = !search || r.name.toLowerCase().includes(search.toLowerCase());
+  const lang = user?.lang || "en";
+  const cache = tcLoad() || {};
+  const translatedName = cache[`${r.id}__${lang}`]?.name || "";
+  const ms = !search || r.name.toLowerCase().includes(search.toLowerCase()) ||     translatedName.toLowerCase().includes(search.toLowerCase());
     const mt = !fType || r.foodType === fType;
     const md = !fDiff || r.difficulty === fDiff;
     const mb = !fBook || r.bookIds?.includes(fBook);
