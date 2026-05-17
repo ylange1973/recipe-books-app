@@ -176,29 +176,20 @@ export default function App() {
 
   const openRecipe = r => { setSelRecipe(r); setView("recipe-detail"); };
 
-  // Seed history on mount so there's always one entry to consume before exiting
+  // Seed initial history entry
+
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef();
+
+  // Close user menu when clicking outside
   useEffect(() => {
-    window.history.replaceState({ view: "list" }, "");
+    const handleClick = e => { if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setShowUserMenu(false); };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const [debugLog, setDebugLog] = useState("");
-
-  // Intercept browser/mobile back button
-  useEffect(() => {
-    const handlePop = () => {
-      setDebugLog(`popstate fired | view:${view} | book:${selBook?.id || "none"}`);
-      if (view === "recipe-detail") {
-        setSelRecipe(null);
-        setView(selBook ? "book-detail" : "list");
-        window.history.pushState({ view: selBook ? "book-detail" : "list" }, "");
-      } else if (view === "book-detail") {
-        setSelBook(null);
-        setView("list");
-      }
-    };
-    window.addEventListener("popstate", handlePop);
-    return () => window.removeEventListener("popstate", handlePop);
-  }, [view, selBook]);
+  // Note: Android PWA back button cannot be intercepted via popstate in standalone mode.
+  // Users navigate back using the in-app sticky back button.
 
   const visibleRecipes = recipes.filter(r => !r.isPrivate || r.ownerId === user?.id);
   const myLikedIds = new Set(likes.filter(l => l.userId === user?.id).map(l => l.recipeId));
@@ -222,15 +213,25 @@ export default function App() {
     <>
       <style>{buildCSS(isRTL)}</style>
       <div className="app">
-        {debugLog && <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.8)", color: "#0f0", fontSize: "11px", padding: "6px 10px", zIndex: 9999, fontFamily: "monospace" }}>{debugLog}</div>}
         <div className="topbar">
           <div className="logo">📚 <span className="logo-text">{t.appName}</span></div>
           <div className="topbar-right">
             <select className="lang-sel" value={user.lang || "en"} onChange={e => updateLang(e.target.value)} title={t.preferredLang}>
               {LANGUAGES.filter(l => ["en", "he"].includes(l.code)).map(l => <option key={l.code} value={l.code}>{l.nativeLabel}</option>)}
             </select>
-            <div className="topbar-user">👤 {user.name}</div>
-            <button className="btn btn-g btn-sm" onClick={handleLogout}>{t.signOut}</button>
+            <div ref={userMenuRef} style={{ position: "relative" }}>
+              <button className="btn btn-g btn-sm" onClick={() => setShowUserMenu(v => !v)}>
+                👤 {user.name}
+              </button>
+              {showUserMenu && (
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", insetInlineEnd: 0, background: "#fff", border: `1px solid ${THEME.tan}`, borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)", minWidth: 140, zIndex: 200 }}>
+                  <button onClick={() => { setShowUserMenu(false); handleLogout(); }}
+                    style={{ width: "100%", padding: ".7rem 1rem", background: "none", border: "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.rust, fontFamily: "'Source Sans 3',sans-serif" }}>
+                    {t.signOut}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -323,10 +324,6 @@ export default function App() {
                     ? <div className="empty"><div className="empty-icon">📚</div><div className="empty-txt">{t.noBooks}</div></div>
                     : <div className="grid">
                       {books.map(b => <BookCard key={b.id} book={b} count={visibleRecipes.filter(r => r.bookIds?.includes(b.id)).length} onClick={() => openBook(b)} users={users} userLang={user?.lang || "en"} />)}
-                      {!isGuest && <div className="add-card" onClick={() => setShowBookForm(true)}>
-                        <div style={{ fontSize: "2rem" }}>+</div>
-                        <div style={{ fontSize: ".88rem", fontWeight: 500 }}>{t.newBook}</div>
-                      </div>}
                     </div>}
                 </>
               )}
@@ -386,7 +383,11 @@ export default function App() {
                   onSave={saveRecipe} currentUser={user} books={books} allUsers={users} t={t} saveRef={saveRef} />
               </div>
               <div className="modal-ft">
-                <button className="btn btn-s" onClick={() => { setShowRecipeForm(false); setEditRecipe(null); }}>{t.cancel}</button>
+                <button className="btn btn-s" onClick={() => {
+                  if (window.confirm(t.unsavedChanges || "You have unsaved changes. Exit without saving?")) {
+                    setShowRecipeForm(false); setEditRecipe(null);
+                  }
+                }}>{t.cancel}</button>
                 <button className="btn btn-p" onClick={() => saveRef.current && saveRef.current()}>{t.saveRecipe}</button>
               </div>
             </div>

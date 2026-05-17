@@ -135,7 +135,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
         {onLike && !isGuest && (
           <button type="button" onClick={e => onLike(recipe.id, e)}
             style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: ".3rem", color: isLiked ? "#e74c3c" : THEME.tan, padding: ".2rem .4rem", flexShrink: 0 }}>
-            <span style={{ fontSize: "2.8rem", lineHeight: 1 }}>{isLiked ? "♥" : "♡"}</span>
+            <span style={{ fontSize: "2.8rem", lineHeight: 1, color: isLiked ? "#e74c3c" : THEME.tan }}>♡</span>
             {likeCount > 0 && <span style={{ fontSize: ".95rem", color: THEME.brown, fontWeight: 500 }}>{likeCount}</span>}
           </button>
         )}
@@ -148,9 +148,8 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       {recipe.source?.url && <div className="rsource">{t.sourceUrl} <a href={recipe.source.url} target="_blank" rel="noreferrer" style={{ color: THEME.sage, textDecoration: "none" }}>🔗 {(() => { try { return new URL(recipe.source.url).hostname.replace(/^www\./, ""); } catch { return recipe.source.url.slice(0, 40) + "…"; } })()}</a></div>}
       {recipe.source?.type === "image" && <div className="rsource">{t.sourcePhoto}</div>}
       {rBooks.length > 0 && <div style={{ marginTop: ".5rem", display: "flex", gap: ".3rem", flexWrap: "wrap" }}>{rBooks.map(b => <span key={b.id} style={{ fontSize: ".78rem", background: THEME.parchment, padding: ".1rem .5rem", borderRadius: 10, color: THEME.darkBrown }}>📚 {b.name}</span>)}</div>}
-      <div className="stat-row" style={{ marginTop: "1rem" }}>
-        <div className="stat"><strong>{t.createdBy}</strong>{owner?.name || "—"}</div>
-        <div className="stat"><strong>{t.created}</strong>{recipe.meta?.createdAt ? new Date(recipe.meta.createdAt).toLocaleDateString() : "—"}</div>
+      <div style={{ fontSize: ".82rem", color: THEME.tan, marginTop: "1rem", marginBottom: ".5rem" }}>
+        {t.createdBy} {owner?.name || "—"} · {recipe.meta?.createdAt ? new Date(recipe.meta.createdAt).toLocaleDateString() : "—"}
       </div>
       {canEdit && (
         <div className="act-row" style={{ marginBottom: "1.5rem" }}>

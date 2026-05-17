@@ -9,7 +9,7 @@ export const buildCSS = (rtl) => {
 body{font-family:'Source Sans 3',sans-serif;background:${THEME.cream};color:${THEME.espresso};direction:${d};}
 .app{min-height:100vh;display:flex;flex-direction:column;}
 /* Topbar */
-.topbar{background:${THEME.espresso};color:${THEME.parchment};padding:0 1rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(44,26,14,.18);overflow:hidden;}
+.topbar{background:${THEME.espresso};color:${THEME.parchment};padding:0 1rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(44,26,14,.18);}
 .logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:${THEME.gold};display:flex;align-items:center;gap:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1;}
 .logo-text{display:none;}
 @media(min-width:480px){.logo-text{display:inline;}}
