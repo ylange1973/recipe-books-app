@@ -111,3 +111,13 @@ export async function fbToggleLike(recipeId, userId) {
     return true;
   }
 }
+
+// ── Share Tokens ──────────────────────────────────────────────────────────────
+
+export async function fbCreateShareToken(recipeId, createdBy, lang) {
+  const token = uid();
+  const createdAt = Date.now();
+  const expiresAt = createdAt + 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+  await setDoc(doc(db, "shareTokens", token), { recipeId, createdBy, lang, createdAt, expiresAt });
+  return token;
+}

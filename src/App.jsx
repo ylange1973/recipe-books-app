@@ -297,7 +297,7 @@ export default function App() {
               likeCount={likes.filter(l => l.recipeId === selRecipe?.id).length}
               isLiked={likes.some(l => l.recipeId === selRecipe?.id && l.userId === user?.id)}
               onLike={handleToggleLike}
-              currentUser={user} allUsers={users} books={books} t={t} isGuest={isGuest} />
+              currentUser={user} allUsers={users} books={books} t={t} isGuest={isGuest} onShareToast={showToast} />
           )}
 
           {view === "book-detail" && selBook && (() => {
