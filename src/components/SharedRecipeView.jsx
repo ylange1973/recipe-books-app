@@ -132,7 +132,7 @@ export default function SharedRecipeView() {
 
         <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", marginBottom: ".8rem" }}>
           {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
-          {display.difficulty && <span className="tag tag-d">{display.difficulty}</span>}
+          {display.difficulty && <span className="tag tag-d">{(() => { const idx = T.en.DIFFICULTIES.indexOf(display.difficulty); return idx !== -1 ? (t.DIFFICULTIES[idx] || display.difficulty) : display.difficulty; })()}</span>}
           {(recipe.customTags || []).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
         </div>
 

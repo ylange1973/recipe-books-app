@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { THEME, LANGUAGES, GUEST_EMAIL } from "../constants.js";
+import { THEME, LANGUAGES, GUEST_EMAIL, T } from "../constants.js";
 import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
 import { translateRecipe } from "../ai.js";
 import { fbTrackRecipeOpen, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation, fbCreateShareToken } from "../firestore.js";
@@ -144,7 +144,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       <div className="rmeta-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
           {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
-          {display.difficulty && <span className="tag tag-d">{display.difficulty}</span>}
+          {display.difficulty && <span className="tag tag-d">{(() => { const idx = T.en.DIFFICULTIES.indexOf(display.difficulty); return idx !== -1 ? (t.DIFFICULTIES[idx] || display.difficulty) : display.difficulty; })()}</span>}
           {(recipe.customTags || []).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
         </div>
         {onLike && !isGuest && (
