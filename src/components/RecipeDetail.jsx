@@ -107,20 +107,38 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
     }
   };
 
+  const [shareUrl, setShareUrl] = useState(null);
+  const [showSharePopover, setShowSharePopover] = useState(false);
+
   const handleShare = async () => {
     if (sharing) return;
     setSharing(true);
     try {
       const token = await fbCreateShareToken(recipe.id, currentUser.id, lang);
       const url = `${window.location.origin}/share.html?token=${token}`;
-      await navigator.clipboard.writeText(url);
-      if (onShareToast) onShareToast("🔗 Share link copied! Valid for 7 days.");
+      setShareUrl(url);
+      setShowSharePopover(true);
     } catch (e) {
       console.error("Share failed:", e);
       if (onShareToast) onShareToast("⚠️ Could not create share link.");
     } finally {
       setSharing(false);
     }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShowSharePopover(false);
+      if (onShareToast) onShareToast("🔗 Share link copied! Valid for 7 days.");
+    } catch {
+      if (onShareToast) onShareToast("⚠️ Could not copy link.");
+    }
+  };
+
+  const handleWhatsApp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent("Check out this recipe: " + shareUrl)}`, "_blank");
+    setShowSharePopover(false);
   };
 
   return (
@@ -170,10 +188,28 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
         {canEdit && <button className="btn btn-s btn-sm" onClick={onEdit}>{t.edit}</button>}
         {isOwner && <button className="btn btn-d btn-sm" onClick={onDelete}>{t.del}</button>}
         {isOwner && !recipe.isPrivate && (
-          <button className="btn btn-s btn-sm" onClick={handleShare} disabled={sharing}
-            title="Share recipe — generates a 7-day link">
-            {sharing ? "⏳" : "🔗"} {sharing ? "Creating link…" : (t.share || "Share")}
-          </button>
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <button className="btn btn-s btn-sm" onClick={handleShare} disabled={sharing}
+              title="Share recipe — generates a 7-day link">
+              {sharing ? "⏳" : "🔗"} {sharing ? "Creating link…" : (t.share || "Share")}
+            </button>
+            {showSharePopover && (
+              <div style={{ position: "absolute", top: "calc(100% + 6px)", insetInlineStart: 0, background: "#fff", border: `1px solid ${THEME.tan}`, borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,.12)", zIndex: 300, minWidth: 160 }}>
+                <button type="button" onClick={handleWhatsApp}
+                  style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif" }}>
+                  💬 WhatsApp
+                </button>
+                <button type="button" onClick={handleCopyLink}
+                  style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.darkBrown, fontFamily: "'Source Sans 3',sans-serif", borderTop: `1px solid ${THEME.parchment}` }}>
+                  🔗 {t.copyLink || "Copy link"}
+                </button>
+                <button type="button" onClick={() => setShowSharePopover(false)}
+                  style={{ width: "100%", padding: ".6rem 1rem", background: "none", border: "none", cursor: "pointer", textAlign: "start", fontSize: ".88rem", color: THEME.tan, fontFamily: "'Source Sans 3',sans-serif", borderTop: `1px solid ${THEME.parchment}` }}>
+                  ✕ {t.cancel || "Cancel"}
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
       {recipe.serves && (
