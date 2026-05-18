@@ -161,7 +161,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       {headerImg && <img className="rhero" src={headerImg.src} alt={display.name} />}
       <div className="rmeta-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
-          {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
+          {display.foodType && <span className="tag tag-t">{(() => { const idx = Object.values(T).reduce((f, lt) => f !== -1 ? f : lt.FOOD_TYPES.indexOf(display.foodType), -1); return idx !== -1 ? (t.FOOD_TYPES[idx] || display.foodType) : display.foodType; })()}</span>}
           {display.difficulty && <span className="tag tag-d">{(() => { const idx = T.en.DIFFICULTIES.indexOf(display.difficulty); return idx !== -1 ? (t.DIFFICULTIES[idx] || display.difficulty) : display.difficulty; })()}</span>}
           {(recipe.customTags || []).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
         </div>
