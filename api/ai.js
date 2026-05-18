@@ -18,22 +18,19 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${openaiKey}`,
         },
-        body: JSON.stringify({
-          model: "dall-e-2",
+body: JSON.stringify({
+          model: "gpt-image-1",
           prompt: imagenPrompt,
           n: 1,
-          size: "512x512",
+          size: "1024x1024",
+          quality: "low",
         }),
       });
       const data = await response.json();
       if (!response.ok) return res.status(500).json({ error: data.error?.message || "OpenAI API error" });
 
-const imageUrl = data.data?.[0]?.url;
-      if (!imageUrl) return res.status(500).json({ error: "No image returned from OpenAI" });
-      // Fetch the image and convert to base64
-      const imgRes = await fetch(imageUrl);
-      const arrayBuffer = await imgRes.arrayBuffer();
-      const b64 = Buffer.from(arrayBuffer).toString("base64");
+      const b64 = data.data?.[0]?.b64_json;
+      if (!b64) return res.status(500).json({ error: "No image returned from OpenAI" });
       return res.status(200).json({ imageBase64: b64, mimeType: "image/png" });
     } catch (e) {
       return res.status(500).json({ error: e.message });
