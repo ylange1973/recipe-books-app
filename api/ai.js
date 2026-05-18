@@ -5,33 +5,34 @@ export default async function handler(req, res) {
 
   const { prompt, imageBase64, imageType, url, fileBase64, fileType, action, imagenPrompt } = req.body;
 
-  // --- Image generation via Gemini Flash Image (free tier) ---
+  // --- Image generation via OpenAI DALL-E 2 ---
   if (action === "generateImage") {
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) return res.status(500).json({ error: "GEMINI_API_KEY not set" });
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) return res.status(500).json({ error: "OPENAI_API_KEY not set" });
     if (!imagenPrompt) return res.status(400).json({ error: "imagenPrompt required" });
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: imagenPrompt }] }],
-            generationConfig: { responseModalities: ["IMAGE"] }
-          }),
-        }
-      );
+      const response = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: "dall-e-2",
+          prompt: imagenPrompt,
+          n: 1,
+          size: "512x512",
+          response_format: "b64_json",
+        }),
+      });
       const data = await response.json();
-      if (!response.ok) return res.status(500).json({ error: data.error?.message || "Gemini image API error" });
+      if (!response.ok) return res.status(500).json({ error: data.error?.message || "OpenAI API error" });
 
-      // Find the image part in the response
-      const parts = data.candidates?.[0]?.content?.parts || [];
-      const imagePart = parts.find(p => p.inlineData?.data);
-      if (!imagePart) return res.status(500).json({ error: "No image returned from Gemini" });
+      const b64 = data.data?.[0]?.b64_json;
+      if (!b64) return res.status(500).json({ error: "No image returned from OpenAI" });
 
-      return res.status(200).json({ imageBase64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType || "image/png" });
+      return res.status(200).json({ imageBase64: b64, mimeType: "image/png" });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
