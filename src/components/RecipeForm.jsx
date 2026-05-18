@@ -72,7 +72,24 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   };
 
   const handleExtractUrl = async () => {
-    if (!srcUrl.trim()) return; setAiSt("extracting"); setAiErr("");
+    if (!srcUrl.trim()) return;
+    // --- YouTube transcript test ---
+    if (srcUrl.includes("youtube.com") || srcUrl.includes("youtu.be")) {
+      const match = srcUrl.match(/(?:v=|youtu\.be\/)([^&\s]+)/);
+      const videoId = match?.[1];
+      if (videoId) {
+        setAiSt("extracting"); setAiErr("");
+        try {
+          const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "youtubeTranscript", videoId }) });
+          const data = await r.json();
+          console.log("YouTube transcript result:", data);
+          setAiSt("done");
+        } catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
+        return;
+      }
+    }
+    // --- Regular URL extraction ---
+    setAiSt("extracting"); setAiErr("");
     try { applyExtracted(await extractAndTranslate(srcUrl, "url", currentUser.lang || "en")); setAiSt("done"); }
     catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
   };
