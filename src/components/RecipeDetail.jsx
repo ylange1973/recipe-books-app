@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { THEME, LANGUAGES, GUEST_EMAIL } from "../constants.js";
+import { THEME, LANGUAGES, GUEST_EMAIL, T } from "../constants.js";
 import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
 import { translateRecipe } from "../ai.js";
-import { fbTrackRecipeOpen, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation } from "../firestore.js";
+import { fbTrackRecipeOpen, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation, fbCreateShareToken } from "../firestore.js";
 
 // Builds a translation object to store in Firestore.
 // Takes translated text fields from AI response, but preserves
@@ -21,8 +21,9 @@ function buildTranslationStore(tr, originalRecipe) {
   };
 }
 
-export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest = false, likeCount = 0, isLiked = false, onLike }) {
+export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest = false, likeCount = 0, isLiked = false, onLike, onShareToast }) {
   const canEdit = !isGuest && (recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id));
+  const isOwner = !isGuest && recipe.ownerId === currentUser.id;
   const owner = allUsers.find(u => u.id === recipe.ownerId);
   const rBooks = books.filter(b => recipe.bookIds?.includes(b.id));
   const headerImg = recipe.images?.find(i => i.role === "header") || recipe.images?.[0];
@@ -30,6 +31,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
   const needsTrans = lang !== (recipe.originalLang || "en");
   const [display, setDisplay] = useState(recipe);
   const [ts, setTs] = useState("pending");
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     if (!isGuest) {
@@ -85,13 +87,10 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
 
   const handleRetranslate = async () => {
     const ck = `${recipe.id}__${lang}`;
-    // Clear Firestore translation
     await fbDeleteTranslation(recipe.id, lang);
-    // Clear localStorage cache
     const c = tcLoad() || {};
     delete c[ck];
     tcSave(c);
-    // Reset display and trigger fresh translation
     setDisplay(recipe);
     setTs("loading");
     try {
@@ -105,6 +104,22 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       console.error("[retranslate error]", e?.message);
       setDisplay(recipe);
       setTs("error");
+    }
+  };
+
+  const handleShare = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const token = await fbCreateShareToken(recipe.id, currentUser.id, lang);
+      const url = `${window.location.origin}/share.html?token=${token}`;
+      await navigator.clipboard.writeText(url);
+      if (onShareToast) onShareToast("🔗 Share link copied! Valid for 7 days.");
+    } catch (e) {
+      console.error("Share failed:", e);
+      if (onShareToast) onShareToast("⚠️ Could not create share link.");
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -129,7 +144,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       <div className="rmeta-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
           {display.foodType && <span className="tag tag-t">{display.foodType}</span>}
-          {display.difficulty && <span className="tag tag-d">{display.difficulty}</span>}
+          {display.difficulty && <span className="tag tag-d">{(() => { const idx = T.en.DIFFICULTIES.indexOf(display.difficulty); return idx !== -1 ? (t.DIFFICULTIES[idx] || display.difficulty) : display.difficulty; })()}</span>}
           {(recipe.customTags || []).map(tg => <span key={tg} className="tag tag-c">{tg}</span>)}
         </div>
         {onLike && !isGuest && (
@@ -151,12 +166,16 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       <div style={{ fontSize: ".82rem", color: THEME.tan, marginTop: "1rem", marginBottom: ".5rem" }}>
         {t.createdBy} {owner?.name || "—"} · {recipe.meta?.createdAt ? new Date(recipe.meta.createdAt).toLocaleDateString() : "—"}
       </div>
-      {canEdit && (
-        <div className="act-row" style={{ marginBottom: "1.5rem" }}>
-          <button className="btn btn-s btn-sm" onClick={onEdit}>{t.edit}</button>
-          {recipe.ownerId === currentUser.id && <button className="btn btn-d btn-sm" onClick={onDelete}>{t.del}</button>}
-        </div>
-      )}
+      <div className="act-row" style={{ marginBottom: "1.5rem" }}>
+        {canEdit && <button className="btn btn-s btn-sm" onClick={onEdit}>{t.edit}</button>}
+        {isOwner && <button className="btn btn-d btn-sm" onClick={onDelete}>{t.del}</button>}
+        {isOwner && !recipe.isPrivate && (
+          <button className="btn btn-s btn-sm" onClick={handleShare} disabled={sharing}
+            title="Share recipe — generates a 7-day link">
+            {sharing ? "⏳" : "🔗"} {sharing ? "Creating link…" : (t.share || "Share")}
+          </button>
+        )}
+      </div>
       {recipe.serves && (
         <div style={{ display: "inline-flex", alignItems: "center", gap: ".5rem", marginBottom: "1rem", padding: ".4rem .9rem", background: THEME.warm, borderRadius: 8 }}>
           <span style={{ fontSize: "1rem" }}>🍽</span>

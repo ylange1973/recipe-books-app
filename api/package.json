@@ -1,3 +1,6 @@
 {
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "youtube-caption-extractor": "latest"
+  }
 }

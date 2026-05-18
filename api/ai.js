@@ -3,9 +3,20 @@ export const config = { maxDuration: 30 };
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { prompt, imageBase64, imageType, url, fileBase64, fileType, action, imagenPrompt } = req.body;
+  const { prompt, imageBase64, imageType, url, fileBase64, fileType, action, imagenPrompt, videoId } = req.body;
 
-  // --- Image generation via OpenAI DALL-E 2 ---
+  // --- YouTube transcript extraction ---
+  if (action === "youtubeTranscript") {
+    try {
+      const { getSubtitles } = await import("youtube-caption-extractor");
+      const subtitles = await getSubtitles({ videoID: videoId, lang: "en" });
+      return res.status(200).json({ subtitles });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // --- Image generation via OpenAI DALL-E ---
   if (action === "generateImage") {
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) return res.status(500).json({ error: "OPENAI_API_KEY not set" });
@@ -19,11 +30,11 @@ export default async function handler(req, res) {
           "Authorization": `Bearer ${openaiKey}`,
         },
         body: JSON.stringify({
-          model: "dall-e-2",
+          model: "gpt-image-1",
           prompt: imagenPrompt,
           n: 1,
-          size: "512x512",
-          response_format: "b64_json",
+          size: "1024x1024",
+          quality: "low",
         }),
       });
       const data = await response.json();
@@ -45,7 +56,6 @@ export default async function handler(req, res) {
   try {
     let userContent = [];
 
-    // URL fetch: get page text first
     if (url) {
       try {
         const pageRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(10000) });
@@ -61,16 +71,13 @@ export default async function handler(req, res) {
         userContent.push({ type: "text", text: prompt + "\n\n(Could not fetch page content from: " + url + ")" });
       }
     }
-    // Image extraction
     else if (imageBase64) {
       userContent.push({ type: "image", source: { type: "base64", media_type: imageType || "image/jpeg", data: imageBase64 } });
       userContent.push({ type: "text", text: prompt });
     }
-    // File extraction (PDF/docx passed as base64)
     else if (fileBase64) {
       userContent.push({ type: "text", text: prompt + "\n\n[File content (base64, type: " + fileType + ") attached — extract recipe from it.]" });
     }
-    // Plain text prompt
     else {
       userContent.push({ type: "text", text: prompt });
     }

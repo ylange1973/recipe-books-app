@@ -72,7 +72,8 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   };
 
   const handleExtractUrl = async () => {
-    if (!srcUrl.trim()) return; setAiSt("extracting"); setAiErr("");
+    if (!srcUrl.trim()) return;
+    setAiSt("extracting"); setAiErr("");
     try { applyExtracted(await extractAndTranslate(srcUrl, "url", currentUser.lang || "en")); setAiSt("done"); }
     catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
   };
