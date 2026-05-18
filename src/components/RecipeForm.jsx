@@ -83,6 +83,32 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
   };
 
+  const handleGenerateImage = async () => {
+    if (!name.trim()) {
+      alert(t.enterRecipeName || "Please enter a recipe name first.");
+      return null;
+    }
+    // Build prompt from name + key ingredients (up to 5) + foodType
+    const keyIngs = ings
+      .filter(i => i.type !== "section" && i.name?.trim())
+      .slice(0, 5)
+      .map(i => i.name.trim())
+      .join(", ");
+    const foodTypePart = foodType ? `, ${foodType}` : "";
+    const ingsPart = keyIngs ? `. Key ingredients: ${keyIngs}` : "";
+    const imagenPrompt = `Professional food photography of ${name}${foodTypePart}${ingsPart}. Natural lighting, clean background, top-down or 45-degree angle, appetizing presentation, high quality.`;
+
+    const apiRes = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "generateImage", imagenPrompt }),
+    });
+    const data = await apiRes.json();
+    if (data.error) throw new Error(data.error);
+    markDirty();
+    return data.imageBase64 || null;
+  };
+
   const addIng = () => setIngs([...ings, { id: uid(), amount: "", unit: "", name: "" }]);
   const upIng = (id, f, v) => { setIngs(ings.map(i => i.id === id ? { ...i, [f]: v } : i)); markDirty(); };
   const rmIng = id => { setIngs(ings.filter(i => i.id !== id)); markDirty(); };
@@ -220,7 +246,15 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
         )}
       </div>
       <div className="divider" />
-      <div className="field"><ImageInput images={images} onChange={imgs => { setImages(imgs); markDirty(); }} label={t.recipeImages} /></div>
+      {/* Main recipe images — onGenerate wired in for AI image generation */}
+      <div className="field">
+        <ImageInput
+          images={images}
+          onChange={imgs => { setImages(imgs); markDirty(); }}
+          label={t.recipeImages}
+          onGenerate={handleGenerateImage}
+        />
+      </div>
       <div className="divider" />
       <div className="field">
         <label>{t.ingredients}</label>
