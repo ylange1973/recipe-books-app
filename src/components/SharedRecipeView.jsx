@@ -13,6 +13,7 @@ export default function SharedRecipeView() {
   const [state, setState] = useState("loading"); // loading | ready | expired | invalid | error
   const [recipe, setRecipe] = useState(null);
   const [display, setDisplay] = useState(null);
+  const [isRTL, setIsRTL] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -48,6 +49,7 @@ export default function SharedRecipeView() {
         setDisplay(recipe);
       }
 
+      setIsRTL(lang === "he");
       setState("ready");
     } catch (e) {
       console.error("SharedRecipeView load error:", e);
@@ -77,7 +79,7 @@ export default function SharedRecipeView() {
 
   if (state === "loading") return (
     <>
-      <style>{buildCSS(false)}</style>
+      <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
         <div style={brandStyle}>📚 My Recipe Books</div>
         <div style={{ textAlign: "center", color: THEME.brown, padding: "3rem 0" }}>Loading recipe…</div>
@@ -87,7 +89,7 @@ export default function SharedRecipeView() {
 
   if (state === "expired") return (
     <>
-      <style>{buildCSS(false)}</style>
+      <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
         <div style={brandStyle}>📚 My Recipe Books</div>
         <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
@@ -101,7 +103,7 @@ export default function SharedRecipeView() {
 
   if (state === "invalid" || state === "error") return (
     <>
-      <style>{buildCSS(false)}</style>
+      <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
         <div style={brandStyle}>📚 My Recipe Books</div>
         <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
@@ -115,7 +117,7 @@ export default function SharedRecipeView() {
 
   return (
     <>
-      <style>{buildCSS(false)}</style>
+      <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
         <div style={brandStyle}>📚 My Recipe Books</div>
 
