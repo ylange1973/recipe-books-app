@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { fbGetShareToken, fbGetRecipeById, fbGetTranslationForShare } from "../shareFirestore.js";
 import { parseIngredient } from "../utils.js";
 import { buildCSS } from "../styles.js";
+import { T, LANGUAGES } from "../constants.js";
 
 const THEME = {
   brown: "#5c3d2e", darkBrown: "#2c1a0e", tan: "#b89a7a",
@@ -14,6 +15,7 @@ export default function SharedRecipeView() {
   const [recipe, setRecipe] = useState(null);
   const [display, setDisplay] = useState(null);
   const [isRTL, setIsRTL] = useState(false);
+  const [lang, setLang] = useState("en");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -35,8 +37,9 @@ export default function SharedRecipeView() {
 
       setRecipe(recipe);
 
-      // Load translation if lang differs from original
       const lang = tokenDoc.lang || "en";
+      setLang(lang);
+
       const needsTrans = lang !== (recipe.originalLang || "en");
       if (needsTrans) {
         const tr = await fbGetTranslationForShare(recipe.id, lang);
@@ -57,6 +60,7 @@ export default function SharedRecipeView() {
     }
   }
 
+  const t = T[lang] || T.en;
   const headerImg = recipe?.images?.find(i => i.role === "header") || recipe?.images?.[0];
 
   const containerStyle = {
@@ -81,8 +85,8 @@ export default function SharedRecipeView() {
     <>
       <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
-        <div style={brandStyle}>📚 My Recipe Books</div>
-        <div style={{ textAlign: "center", color: THEME.brown, padding: "3rem 0" }}>Loading recipe…</div>
+        <div style={brandStyle}>📚 {T.en.appName}</div>
+        <div style={{ textAlign: "center", color: THEME.brown, padding: "3rem 0" }}>{T.en.extracting}</div>
       </div>
     </>
   );
@@ -91,7 +95,7 @@ export default function SharedRecipeView() {
     <>
       <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
-        <div style={brandStyle}>📚 My Recipe Books</div>
+        <div style={brandStyle}>📚 {T.en.appName}</div>
         <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
           <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>⏳</div>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", marginBottom: ".5rem", color: THEME.darkBrown }}>This link has expired</div>
@@ -105,7 +109,7 @@ export default function SharedRecipeView() {
     <>
       <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
-        <div style={brandStyle}>📚 My Recipe Books</div>
+        <div style={brandStyle}>📚 {T.en.appName}</div>
         <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
           <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🔍</div>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.3rem", marginBottom: ".5rem", color: THEME.darkBrown }}>Recipe not found</div>
@@ -119,7 +123,7 @@ export default function SharedRecipeView() {
     <>
       <style>{buildCSS(isRTL)}</style>
       <div style={containerStyle}>
-        <div style={brandStyle}>📚 My Recipe Books</div>
+        <div style={brandStyle}>📚 {t.appName}</div>
 
         {headerImg && (
           <img src={headerImg.src} alt={display.name}
@@ -138,13 +142,13 @@ export default function SharedRecipeView() {
         {recipe.serves && (
           <div style={{ display: "inline-flex", alignItems: "center", gap: ".5rem", marginBottom: "1rem", padding: ".4rem .9rem", background: THEME.warm, borderRadius: 8 }}>
             <span>🍽</span>
-            <span style={{ fontSize: ".95rem", fontWeight: 500 }}>Serves: {recipe.serves}</span>
+            <span style={{ fontSize: ".95rem", fontWeight: 500 }}>{t.serves}: {recipe.serves}</span>
           </div>
         )}
 
         {display.ingredients?.length > 0 && (
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 600, borderBottom: `2px solid ${THEME.parchment}`, paddingBottom: ".4rem", marginBottom: ".8rem" }}>Ingredients</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 600, borderBottom: `2px solid ${THEME.parchment}`, paddingBottom: ".4rem", marginBottom: ".8rem" }}>{t.ingredients}</div>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {display.ingredients.map((ing, i) => (
                 ing.type === "section" ? (
@@ -153,7 +157,7 @@ export default function SharedRecipeView() {
                   </li>
                 ) : (
                   <li key={ing.id || i} style={{ display: "flex", gap: ".5rem", padding: ".4rem 0", borderBottom: `1px solid ${THEME.parchment}`, fontSize: ".95rem" }}>
-                    {(() => { const { qty, unit } = parseIngredient(ing, "en"); return (<><span style={{ minWidth: 40, color: THEME.brown, fontWeight: 600 }}>{qty}</span><span style={{ minWidth: 50, color: THEME.tan }}>{unit}</span><span>{ing.name}</span></>); })()}
+                    {(() => { const { qty, unit } = parseIngredient(ing, lang); return (<><span style={{ minWidth: 40, color: THEME.brown, fontWeight: 600 }}>{qty}</span><span style={{ minWidth: 50, color: THEME.tan }}>{unit}</span><span>{ing.name}</span></>); })()}
                   </li>
                 )
               ))}
@@ -163,7 +167,7 @@ export default function SharedRecipeView() {
 
         {display.steps?.length > 0 && (
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 600, borderBottom: `2px solid ${THEME.parchment}`, paddingBottom: ".4rem", marginBottom: ".8rem" }}>Steps</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 600, borderBottom: `2px solid ${THEME.parchment}`, paddingBottom: ".4rem", marginBottom: ".8rem" }}>{t.steps}</div>
             <ol style={{ padding: 0, margin: 0, listStyle: "none" }}>
               {display.steps.map((step, idx) => (
                 <li key={step.id || idx} style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
@@ -182,13 +186,13 @@ export default function SharedRecipeView() {
 
         {display.notes && (
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 600, borderBottom: `2px solid ${THEME.parchment}`, paddingBottom: ".4rem", marginBottom: ".8rem" }}>Notes</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 600, borderBottom: `2px solid ${THEME.parchment}`, paddingBottom: ".4rem", marginBottom: ".8rem" }}>{t.notes}</div>
             <div style={{ background: THEME.warm, borderRadius: 8, padding: "1rem", fontSize: ".9rem", lineHeight: 1.6, color: THEME.brown }}>{display.notes}</div>
           </div>
         )}
 
         <div style={{ marginTop: "2rem", padding: "1rem", background: THEME.parchment, borderRadius: 8, textAlign: "center", fontSize: ".82rem", color: THEME.tan }}>
-          Shared via 📚 My Recipe Books
+          Shared via 📚 {t.appName}
         </div>
       </div>
     </>
