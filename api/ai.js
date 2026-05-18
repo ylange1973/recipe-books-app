@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const { prompt, imageBase64, imageType, url, fileBase64, fileType, action, imagenPrompt } = req.body;
 
   // --- Image generation via Gemini Imagen ---
-  if (action === "generateImage") {
+if (action === "generateImage") {
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) return res.status(500).json({ error: "GEMINI_API_KEY not set" });
     if (!imagenPrompt) return res.status(400).json({ error: "imagenPrompt required" });
@@ -24,6 +24,8 @@ export default async function handler(req, res) {
         }
       );
       const data = await response.json();
+      console.log("Imagen status:", response.status);
+      console.log("Imagen response:", JSON.stringify(data).slice(0, 500));
       if (!response.ok) return res.status(500).json({ error: data.error?.message || "Imagen API error" });
 
       const b64 = data.predictions?.[0]?.bytesBase64Encoded;
