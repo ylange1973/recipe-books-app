@@ -5,33 +5,33 @@ export default async function handler(req, res) {
 
   const { prompt, imageBase64, imageType, url, fileBase64, fileType, action, imagenPrompt } = req.body;
 
-  // --- Image generation via Gemini Imagen ---
-if (action === "generateImage") {
+  // --- Image generation via Gemini Flash Image (free tier) ---
+  if (action === "generateImage") {
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) return res.status(500).json({ error: "GEMINI_API_KEY not set" });
     if (!imagenPrompt) return res.status(400).json({ error: "imagenPrompt required" });
 
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${geminiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            instances: [{ prompt: imagenPrompt }],
-            parameters: { sampleCount: 1 }
+            contents: [{ parts: [{ text: imagenPrompt }] }],
+            generationConfig: { responseModalities: ["IMAGE"] }
           }),
         }
       );
       const data = await response.json();
-      console.log("Imagen status:", response.status);
-      console.log("Imagen response:", JSON.stringify(data).slice(0, 500));
-      if (!response.ok) return res.status(500).json({ error: data.error?.message || "Imagen API error" });
+      if (!response.ok) return res.status(500).json({ error: data.error?.message || "Gemini image API error" });
 
-      const b64 = data.predictions?.[0]?.bytesBase64Encoded;
-      if (!b64) return res.status(500).json({ error: "No image returned from Imagen" });
+      // Find the image part in the response
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find(p => p.inlineData?.data);
+      if (!imagePart) return res.status(500).json({ error: "No image returned from Gemini" });
 
-      return res.status(200).json({ imageBase64: b64, mimeType: "image/png" });
+      return res.status(200).json({ imageBase64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType || "image/png" });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
