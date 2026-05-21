@@ -48,6 +48,7 @@ export async function extractAndTranslate(source, type, targetLang) {
     return extractJSON(raw);
   }
 
+  console.log("[extractAndTranslate] source prefix:", source?.slice(0, 50));
   const b64 = source.split(",")[1];
   const mime = source.split(";")[0].split(":")[1] || "image/jpeg";
   const prompt = [
