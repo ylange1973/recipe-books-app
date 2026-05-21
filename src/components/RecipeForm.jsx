@@ -53,6 +53,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     const f = e.target.files[0]; if (!f) return;
     setFileInfo({ name: f.name, type: f.type });
     setAiSt("extracting"); setAiErr("");
+    alert("file type: " + f.type + ", is image: " + f.type.startsWith("image/"));
     try {
       const langName = getLangName();
       if (f.type.startsWith("image/")) {
