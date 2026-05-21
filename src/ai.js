@@ -10,8 +10,7 @@ export async function callAI(prompt, imageBase64 = null, imageType = null, url =
   if (data.error) throw new Error("AI error: " + data.error);
   console.log("[callAI raw response]", data.text?.slice(0, 500));
   alert("Claude response: " + data.text?.slice(0, 300));
-}
-return data.text || "";
+  return data.text || "";
 }
 
 export function extractJSON(raw) {
@@ -62,7 +61,7 @@ export async function extractAndTranslate(source, type, targetLang) {
   ].join("\n");
   const raw = await callAI(prompt, b64, mime);
   const data = extractJSON(raw);
-  data.description = ""; // never trust AI-generated description from images
+  data.description = "";
   return data;
 }
 
