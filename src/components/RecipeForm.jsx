@@ -53,17 +53,13 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     const f = e.target.files[0]; if (!f) return;
     setFileInfo({ name: f.name, type: f.type });
     setAiSt("extracting"); setAiErr("");
-    alert("file type: " + f.type + ", is image: " + f.type.startsWith("image/"));
     try {
       const langName = getLangName();
       if (f.type.startsWith("image/")) {
         const original = await readFileAsDataURL(f);
         const forExtraction = await prepareImageForExtraction(original);
-        alert("Extraction image size: " + Math.round(forExtraction.length / 1024) + "KB");
         const compressed = await compressImage(original); // for storage
-        alert("About to call extractAndTranslate");
         applyExtracted(await extractAndTranslate(forExtraction, "image", currentUser.lang || "en"));
-        alert("extractAndTranslate completed");
       } else {
         const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = ev => res(ev.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
         const apiRes = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `Extract the recipe and return JSON translated into ${langName}. ${AI_SHAPE}`, fileBase64: b64, fileType: f.type }) });
