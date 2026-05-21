@@ -58,6 +58,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       if (f.type.startsWith("image/")) {
         const original = await readFileAsDataURL(f);
         const forExtraction = await prepareImageForExtraction(original);
+  	alert("Extraction image size: " + Math.round(forExtraction.length / 1024) + "KB");
         const compressed = await compressImage(original); // for storage
         applyExtracted(await extractAndTranslate(forExtraction, "image", currentUser.lang || "en"));
       } else {
