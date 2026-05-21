@@ -58,7 +58,8 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       const langName = getLangName();
       if (f.type.startsWith("image/")) {
         const compressed = await compressImage(await readFileAsDataURL(f));
-        applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en"));
+	alert("Source prefix: " + compressed?.slice(0, 60));
+	applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en"));
       } else {
         const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = ev => res(ev.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
         const apiRes = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `Extract the recipe and return JSON translated into ${langName}. ${AI_SHAPE}`, fileBase64: b64, fileType: f.type }) });
