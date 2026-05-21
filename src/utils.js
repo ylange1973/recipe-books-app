@@ -34,6 +34,17 @@ export function compressImage(dataUrl, maxPx = 600, quality = 0.65) {
   });
 }
 
+// Prepare image for AI extraction — higher quality than storage compression.
+// If the image is already under 3MB (base64 ~4MB), send as-is.
+// If larger, compress to 1600px / 0.85 quality to stay under Vercel's 4.5MB limit
+// while preserving enough resolution for text recognition.
+export async function prepareImageForExtraction(dataUrl) {
+  const sizeBytes = (dataUrl.length * 3) / 4; // approximate byte size from base64
+  const threeMB = 3 * 1024 * 1024;
+  if (sizeBytes <= threeMB) return dataUrl;
+  return compressImage(dataUrl, 1600, 0.85);
+}
+
 // Unit helpers
 export function normalizeUnit(unit) {
   if (!unit) return "";

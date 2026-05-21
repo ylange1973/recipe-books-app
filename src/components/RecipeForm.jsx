@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { THEME, LANGUAGES } from "../constants.js";
-import { uid, now, compressImage, readFileAsDataURL } from "../utils.js";
+import { uid, now, compressImage, readFileAsDataURL, prepareImageForExtraction } from "../utils.js";
 import { callAI, extractJSON, extractFromPastedText, extractAndTranslate, RECIPE_JSON_SHAPE as AI_SHAPE } from "../ai.js";
 import ImageInput from "./ImageInput.jsx";
 import TagInput from "./TagInput.jsx";
@@ -51,15 +51,15 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
 
   const handleFileExtract = async e => {
     const f = e.target.files[0]; if (!f) return;
-    if (f.size > 3 * 1024 * 1024) { setAiErr("File too large (max 3MB)."); setAiSt("error"); return; }
     setFileInfo({ name: f.name, type: f.type });
     setAiSt("extracting"); setAiErr("");
     try {
       const langName = getLangName();
       if (f.type.startsWith("image/")) {
-        const compressed = await compressImage(await readFileAsDataURL(f));
-	alert("Source prefix: " + compressed?.slice(0, 60));
-	applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en"));
+        const original = await readFileAsDataURL(f);
+        const forExtraction = await prepareImageForExtraction(original);
+        const compressed = await compressImage(original); // for storage
+        applyExtracted(await extractAndTranslate(forExtraction, "image", currentUser.lang || "en"));
       } else {
         const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = ev => res(ev.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
         const apiRes = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `Extract the recipe and return JSON translated into ${langName}. ${AI_SHAPE}`, fileBase64: b64, fileType: f.type }) });
