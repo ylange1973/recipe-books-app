@@ -49,6 +49,7 @@ export async function extractAndTranslate(source, type, targetLang) {
     return extractJSON(raw);
   }
 
+  alert("inside extractAndTranslate, b64 starts: " + source?.slice(0, 30));
   const b64 = source.split(",")[1];
   const mime = source.split(";")[0].split(":")[1] || "image/jpeg";
   const prompt = [
