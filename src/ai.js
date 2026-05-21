@@ -7,9 +7,9 @@ export async function callAI(prompt, imageBase64 = null, imageType = null, url =
     body: JSON.stringify({ prompt, imageBase64, imageType, url })
   });
   const data = await res.json();
+  alert("error: " + data.error + " | text: " + data.text?.slice(0, 200));
   if (data.error) throw new Error("AI error: " + data.error);
   console.log("[callAI raw response]", data.text?.slice(0, 500));
-  alert("Claude response: " + data.text?.slice(0, 300));
   return data.text || "";
 }
 
