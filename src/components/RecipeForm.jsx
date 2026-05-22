@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { THEME, LANGUAGES } from "../constants.js";
-import { uid, now, compressImage, readFileAsDataURL, prepareImageForExtraction } from "../utils.js";
+import { uid, now, compressImage, readFileAsDataURL, prepareImageForExtraction, normalizeUnit, displayUnit } from "../utils.js";
 import { callAI, extractJSON, extractFromPastedText, extractAndTranslate, RECIPE_JSON_SHAPE as AI_SHAPE } from "../ai.js";
 import ImageInput from "./ImageInput.jsx";
 import TagInput from "./TagInput.jsx";
@@ -42,7 +42,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     if (r.serves) setServes(String(r.serves));
     if (r.ingredients?.length) setIngs(r.ingredients.map(i => ({
       id: uid(),
-      ...(i.type === "section" ? { type: "section", title: i.title || i.name || "" } : { type: "ingredient", amount: i.amount || "", unit: i.unit || "", name: i.name || "" })
+      ...(i.type === "section" ? { type: "section", title: i.title || i.name || "" } : { type: "ingredient", amount: i.amount || "", unit: displayUnit(normalizeUnit(i.unit || ""), currentUser.lang || "en"), name: i.name || "" })
     })));
     if (r.steps?.length) setSteps(r.steps.map(s => ({ id: uid(), text: typeof s === "string" ? s : s.text || "", images: [] })));
   };
