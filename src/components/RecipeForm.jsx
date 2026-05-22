@@ -12,7 +12,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   const [foodType, setFoodType] = useState(initial?.foodType || "");
   const [diff, setDiff] = useState(initial?.difficulty || "");
   const [tags, setTags] = useState(initial?.customTags || []);
-  const [ings, setIngs] = useState(initial?.ingredients || [{ id: uid(), amount: "", unit: "", name: "" }]);
+  const [ings, setIngs] = useState(initial?.ingredients?.map(i => i.type === "section" ? i : { ...i, unit: displayUnit(normalizeUnit(i.unit || ""), currentUser.lang || "en") }) || [{ id: uid(), amount: "", unit: "", name: "" }]);
   const [steps, setSteps] = useState(initial?.steps || [{ id: uid(), text: "", images: [] }]);
   const [notes, setNotes] = useState(initial?.notes || "");
   const [serves, setServes] = useState(initial?.serves || "");
