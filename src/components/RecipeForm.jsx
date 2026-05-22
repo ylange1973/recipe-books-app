@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { THEME, LANGUAGES } from "../constants.js";
-import { uid, now, compressImage, readFileAsDataURL } from "../utils.js";
+import { uid, now, compressImage, readFileAsDataURL, prepareImageForExtraction, normalizeUnit, displayUnit } from "../utils.js";
 import { callAI, extractJSON, extractFromPastedText, extractAndTranslate, RECIPE_JSON_SHAPE as AI_SHAPE } from "../ai.js";
 import ImageInput from "./ImageInput.jsx";
 import TagInput from "./TagInput.jsx";
@@ -12,7 +12,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
   const [foodType, setFoodType] = useState(initial?.foodType || "");
   const [diff, setDiff] = useState(initial?.difficulty || "");
   const [tags, setTags] = useState(initial?.customTags || []);
-  const [ings, setIngs] = useState(initial?.ingredients || [{ id: uid(), amount: "", unit: "", name: "" }]);
+  const [ings, setIngs] = useState(initial?.ingredients?.map(i => i.type === "section" ? i : { ...i, unit: displayUnit(normalizeUnit(i.unit || ""), currentUser.lang || "en") }) || [{ id: uid(), amount: "", unit: "", name: "" }]);
   const [steps, setSteps] = useState(initial?.steps || [{ id: uid(), text: "", images: [] }]);
   const [notes, setNotes] = useState(initial?.notes || "");
   const [serves, setServes] = useState(initial?.serves || "");
@@ -42,7 +42,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     if (r.serves) setServes(String(r.serves));
     if (r.ingredients?.length) setIngs(r.ingredients.map(i => ({
       id: uid(),
-      ...(i.type === "section" ? { type: "section", title: i.title || i.name || "" } : { type: "ingredient", amount: i.amount || "", unit: i.unit || "", name: i.name || "" })
+      ...(i.type === "section" ? { type: "section", title: i.title || i.name || "" } : { type: "ingredient", amount: i.amount || "", unit: displayUnit(normalizeUnit(i.unit || ""), currentUser.lang || "en"), name: i.name || "" })
     })));
     if (r.steps?.length) setSteps(r.steps.map(s => ({ id: uid(), text: typeof s === "string" ? s : s.text || "", images: [] })));
   };
@@ -51,14 +51,15 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
 
   const handleFileExtract = async e => {
     const f = e.target.files[0]; if (!f) return;
-    if (f.size > 3 * 1024 * 1024) { setAiErr("File too large (max 3MB)."); setAiSt("error"); return; }
     setFileInfo({ name: f.name, type: f.type });
     setAiSt("extracting"); setAiErr("");
     try {
       const langName = getLangName();
       if (f.type.startsWith("image/")) {
-        const compressed = await compressImage(await readFileAsDataURL(f));
-        applyExtracted(await extractAndTranslate(compressed, "image", currentUser.lang || "en"));
+        const original = await readFileAsDataURL(f);
+        const forExtraction = await prepareImageForExtraction(original);
+        const compressed = await compressImage(original); // for storage
+        applyExtracted(await extractAndTranslate(forExtraction, "image", currentUser.lang || "en"));
       } else {
         const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = ev => res(ev.target.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(f); });
         const apiRes = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `Extract the recipe and return JSON translated into ${langName}. ${AI_SHAPE}`, fileBase64: b64, fileType: f.type }) });

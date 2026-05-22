@@ -8,7 +8,6 @@ export async function callAI(prompt, imageBase64 = null, imageType = null, url =
   });
   const data = await res.json();
   if (data.error) throw new Error("AI error: " + data.error);
-  console.log("[callAI raw response]", data.text?.slice(0, 500));
   return data.text || "";
 }
 
@@ -61,7 +60,7 @@ export async function extractAndTranslate(source, type, targetLang) {
   ].join("\n");
   const raw = await callAI(prompt, b64, mime);
   const data = extractJSON(raw);
-  data.description = ""; // never trust AI-generated description from images
+  data.description = "";
   return data;
 }
 
@@ -83,8 +82,6 @@ export async function translateRecipe(recipe, targetLang) {
     "",
     JSON.stringify(payload)
   ].join("\n");
-  console.log("[translateRecipe] calling AI, payload size:", JSON.stringify(payload).length);
   const raw = await callAI(prompt);
-  console.log("[translateRecipe] raw response:", raw?.slice(0, 200));
   return JSON.parse(raw.replace(/```json|```/g, "").trim());
 }
