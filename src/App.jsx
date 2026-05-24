@@ -137,7 +137,6 @@ export default function App() {
   };
 
   const saveRecipe = async recipe => {
-    console.log("[saveRecipe] _isTranslationEdit:", recipe._isTranslationEdit, "_translationLang:", recipe._translationLang);
     const isTranslationEdit = !!recipe._isTranslationEdit;
     const translationLang = recipe._translationLang;
     // Strip internal flags before saving
@@ -285,7 +284,6 @@ export default function App() {
                   if (tr?.ingredients) {
                     // Merge translated text fields over original recipe for the form
                     setEditRecipe({ ...selRecipe, ...tr, _isTranslationEdit: true, _translationLang: lang });
-                    console.log("[onEdit] setting editRecipe with _isTranslationEdit: true, lang:", lang);
                   } else {
                     setEditRecipe(selRecipe);
                   }
