@@ -143,7 +143,7 @@ export default function App() {
     const { _isTranslationEdit, _translationLang, ...cleanRecipe } = recipe;
 
     if (isTranslationEdit) {
-      // Save corrected translation only — don't touch original recipe
+      // Save corrected translation only — don't touch original recipe text fields
       const toStore = {
         name: cleanRecipe.name, description: cleanRecipe.description,
         foodType: cleanRecipe.foodType, difficulty: cleanRecipe.difficulty, notes: cleanRecipe.notes,
@@ -158,6 +158,14 @@ export default function App() {
       const c = tcLoad() || {};
       c[`${cleanRecipe.id}__${translationLang}`] = toStore;
       tcSave(c);
+      // Also save structural fields (editPerms, isPrivate, bookIds) to original recipe
+      const originalRecipe = recipes.find(r => r.id === cleanRecipe.id);
+      if (originalRecipe) {
+        const updatedOriginal = { ...originalRecipe, editPerms: cleanRecipe.editPerms, isPrivate: cleanRecipe.isPrivate, bookIds: cleanRecipe.bookIds };
+        await fbSaveRecipe(updatedOriginal);
+        setRecipes(recipes.map(r => r.id === updatedOriginal.id ? updatedOriginal : r));
+        if (selRecipe?.id === updatedOriginal.id) setSelRecipe(updatedOriginal);
+      }
       setShowRecipeForm(false); setEditRecipe(null);
       showToast(t.recipeSaved);
       return;

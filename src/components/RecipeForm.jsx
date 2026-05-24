@@ -139,6 +139,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
       ownerId: initial?.ownerId || currentUser.id,
       originalLang: initial?.originalLang || currentUser.lang || "en",
       editPerms: perms,
+      ...(initial?._isTranslationEdit && { _isTranslationEdit: true, _translationLang: initial._translationLang }),
       meta: { createdAt: initial?.meta?.createdAt || now(), lastEdited: now(), timesOpened: initial?.meta?.timesOpened || 0, lastOpened: initial?.meta?.lastOpened || null }
     });
   };
