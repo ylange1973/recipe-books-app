@@ -89,7 +89,8 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
         });
         const extractData = await extractRes.json();
 
-        if (extractData.text) {
+        console.log("Railway response:", extractData);
+	if (extractData.text) {
           // Pass extracted text to Claude for recipe parsing
           applyExtracted(await extractFromPastedText(extractData.text, getLangName()));
           setAiSt("done");
