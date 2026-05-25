@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         signal: AbortSignal.timeout(90000),
       });
       const data = await response.json();
-      return res.status(200).json(data);
+      return res.status(200).json({ ...data, _debug: { socialUrl: req.body.socialUrl, extractorUrl, endpoint } });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
