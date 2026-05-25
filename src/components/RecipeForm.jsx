@@ -72,9 +72,35 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
     e.target.value = "";
   };
 
+  const isSocialUrl = u => /youtube\.com|youtu\.be|instagram\.com|tiktok\.com|facebook\.com|fb\.com/.test(u);
+
   const handleExtractUrl = async () => {
     if (!srcUrl.trim()) return;
     setAiSt("extracting"); setAiErr("");
+
+    // Social media URL — route through Railway extractor
+    if (isSocialUrl(srcUrl)) {
+      try {
+        const extractRes = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "socialExtract", socialUrl: srcUrl }),
+        });
+        const extractData = await extractRes.json();
+
+        if (extractData.text) {
+          // Pass extracted text to Claude for recipe parsing
+          applyExtracted(await extractFromPastedText(extractData.text, getLangName()));
+          setAiSt("done");
+        } else {
+          // Nothing extracted — offer video transcription
+          setAiSt("noContent");
+        }
+      } catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
+      return;
+    }
+
+    // Regular URL extraction
     try { applyExtracted(await extractAndTranslate(srcUrl, "url", currentUser.lang || "en")); setAiSt("done"); }
     catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
   };
@@ -197,6 +223,20 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
           )}
           {aiSt === "extracting" && <div className="ai-st"><span className="spinner" />{t.extracting}</div>}
           {aiSt === "done" && <div className="ai-st">✅ {t.extractDone}</div>}
+          {aiSt === "noContent" && (
+            <div className="ai-st" style={{ flexDirection: "column", alignItems: "flex-start", gap: ".5rem" }}>
+              <span>⚠️ {t.noQuickExtract || "Couldn't extract recipe automatically."}</span>
+              <button type="button" className="btn btn-s btn-sm" onClick={async () => {
+                setAiSt("extracting");
+                try {
+                  const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "socialTranscribe", socialUrl: srcUrl }) });
+                  const d = await r.json();
+                  if (d.text) { applyExtracted(await extractFromPastedText(d.text, getLangName())); setAiSt("done"); }
+                  else { setAiSt("error"); setAiErr(t.extractError); }
+                } catch (e) { setAiSt("error"); setAiErr(String(e?.message || e)); }
+              }}>{t.analyseVideo || "Analyse video (may take ~1 min)"}</button>
+            </div>
+          )}
           {aiSt === "error" && <div className="ai-st" style={{ flexDirection: "column", alignItems: "flex-start", gap: ".2rem" }}>
             <span>⚠️ {t.extractError}</span>
             {aiErr && <span style={{ fontSize: ".75rem", color: THEME.brown, fontFamily: "monospace", wordBreak: "break-all" }}>{aiErr}</span>}

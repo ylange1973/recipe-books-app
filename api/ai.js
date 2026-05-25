@@ -3,14 +3,23 @@ export const config = { maxDuration: 60 };
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { prompt, imageBase64, imageType, url, fileBase64, fileType, action, imagenPrompt, videoId } = req.body;
+  const { prompt, imageBase64, imageType, url, fileBase64, fileType, action, imagenPrompt } = req.body;
 
-  // --- YouTube transcript extraction ---
-  if (action === "youtubeTranscript") {
+  // --- Social media extraction via Railway ---
+  if (action === "socialExtract" || action === "socialTranscribe") {
+    const extractorUrl = process.env.EXTRACTOR_URL;
+    if (!extractorUrl) return res.status(500).json({ error: "EXTRACTOR_URL not set" });
+
     try {
-      const { getSubtitles } = await import("youtube-caption-extractor");
-      const subtitles = await getSubtitles({ videoID: videoId, lang: "en" });
-      return res.status(200).json({ subtitles });
+      const endpoint = action === "socialTranscribe" ? "/transcribe" : "/extract";
+      const response = await fetch(extractorUrl + endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: req.body.socialUrl }),
+        signal: AbortSignal.timeout(90000),
+      });
+      const data = await response.json();
+      return res.status(200).json(data);
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
