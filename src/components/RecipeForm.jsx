@@ -80,6 +80,7 @@ export default function RecipeForm({ initial, onSave, currentUser, books, allUse
 
     // Social media URL — route through Railway extractor
     if (isSocialUrl(srcUrl)) {
+      console.log("Social URL detected:", srcUrl);
       try {
         const extractRes = await fetch("/api/ai", {
           method: "POST",
