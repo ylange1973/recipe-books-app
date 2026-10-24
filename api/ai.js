@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // --- Image generation via OpenAI DALL-E ---
+  // --- Image generation via OpenAI ---
   if (action === "generateImage") {
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) return res.status(500).json({ error: "OPENAI_API_KEY not set" });
@@ -30,21 +30,28 @@ export default async function handler(req, res) {
           "Authorization": `Bearer ${openaiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-image-1",
+          model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-2",
           prompt: imagenPrompt,
           n: 1,
           size: "1024x1024",
           quality: "low",
         }),
       });
-      const data = await response.json();
-      if (!response.ok) return res.status(500).json({ error: data.error?.message || "OpenAI API error" });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { data = {}; }
+      if (!response.ok) {
+        const message = data.error?.message || raw.slice(0, 500) || "OpenAI image API error";
+        console.error("OpenAI image generation failed", { status: response.status, message });
+        return res.status(response.status >= 400 && response.status < 500 ? 400 : 502).json({ error: message });
+      }
 
       const b64 = data.data?.[0]?.b64_json;
-      if (!b64) return res.status(500).json({ error: "No image returned from OpenAI" });
+      if (!b64) return res.status(502).json({ error: "No image returned from OpenAI" });
 
       return res.status(200).json({ imageBase64: b64, mimeType: "image/png" });
     } catch (e) {
+      console.error("Image generation exception", e);
       return res.status(500).json({ error: e.message });
     }
   }
