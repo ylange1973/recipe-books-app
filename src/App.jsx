@@ -179,6 +179,7 @@ export default function App() {
   };
 
   const deleteRecipe = async id => {
+    if (isGuest || !user?.id || selRecipe?.ownerId !== user.id) return;
     if (!confirm(t.delRecipeConfirm)) return;
     await fbDeleteRecipe(id);
     setRecipes(recipes.filter(r => r.id !== id));
