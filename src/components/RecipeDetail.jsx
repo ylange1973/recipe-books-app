@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { THEME, LANGUAGES, GUEST_EMAIL, T } from "../constants.js";
 import { tcLoad, tcSave, now, parseIngredient } from "../utils.js";
 import { translateRecipe } from "../ai.js";
+import { mergeTranslationIngredients } from "../translationIngredients.js";
 import { fbTrackRecipeOpen, fbGetTranslation, fbSaveTranslation, fbDeleteTranslation, fbCreateShareToken } from "../firestore.js";
 
 // Builds a translation object to store in Firestore.
@@ -11,18 +12,14 @@ function buildTranslationStore(tr, originalRecipe) {
   return {
     name: tr.name, description: tr.description,
     foodType: tr.foodType, difficulty: tr.difficulty, notes: tr.notes,
-    ingredients: (tr.ingredients || []).map(i => {
-      if (i.type === "section") return { id: i.id, type: "section", title: i.title };
-      const orig = originalRecipe.ingredients?.find(o => o.id === i.id);
-      return { id: i.id, type: "ingredient", name: i.name, amount: orig?.amount || "", unit: orig?.unit || "" };
-    }),
+    ingredients: mergeTranslationIngredients(tr.ingredients, originalRecipe.ingredients),
     steps: (tr.steps || []).map(s => ({ id: s.id, text: s.text })),
     stale: false,
   };
 }
 
 export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrackOpen, currentUser, allUsers, books, t, isGuest = false, likeCount = 0, isLiked = false, onLike, onShareToast }) {
-  const canEdit = !isGuest && (recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id));
+  const canEdit = !isGuest && !!currentUser?.id;
   const isOwner = !isGuest && recipe.ownerId === currentUser.id;
   const owner = allUsers.find(u => u.id === recipe.ownerId);
   const rBooks = books.filter(b => recipe.bookIds?.includes(b.id));
@@ -49,7 +46,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       // 1. Check localStorage cache first
       const cache = tcLoad() || {};
       if (cache[ck]?.ingredients && !cache[ck]?.stale) {
-        setDisplay({ ...recipe, ...cache[ck] });
+        setDisplay({ ...recipe, ...cache[ck], ingredients: mergeTranslationIngredients(cache[ck].ingredients, recipe.ingredients) });
         setTs(cache[ck].stale ? "stale" : "done");
         return;
       }
@@ -61,7 +58,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
         const c = tcLoad() || {};
         c[ck] = fbTr;
         tcSave(c);
-        setDisplay({ ...recipe, ...fbTr });
+        setDisplay({ ...recipe, ...fbTr, ingredients: mergeTranslationIngredients(fbTr.ingredients, recipe.ingredients) });
         setTs(fbTr.stale ? "stale" : "done");
         return;
       }
@@ -73,7 +70,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
         await fbSaveTranslation(recipe.id, lang, toStore);
         // Cache in localStorage
         const c = tcLoad() || {}; c[ck] = toStore; tcSave(c);
-        setDisplay({ ...recipe, ...tr });
+        setDisplay({ ...recipe, ...toStore });
         setTs("done");
       } catch (e) {
         console.error("[RecipeDetail translate error]", e?.message);
@@ -98,7 +95,7 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       const toStore = buildTranslationStore(tr, recipe);
       await fbSaveTranslation(recipe.id, lang, toStore);
       const c2 = tcLoad() || {}; c2[ck] = toStore; tcSave(c2);
-      setDisplay({ ...recipe, ...tr });
+      setDisplay({ ...recipe, ...toStore });
       setTs("done");
     } catch (e) {
       console.error("[retranslate error]", e?.message);
@@ -148,13 +145,13 @@ export default function RecipeDetail({ recipe, onBack, onEdit, onDelete, onTrack
       {ts === "done" && needsTrans && (
         <div className="trans-banner" style={{ background: "#f0f7ed", borderColor: THEME.sage, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>✓ {t.translated} ({LANGUAGES.find(l => l.code === lang)?.nativeLabel})</span>
-          {(recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id)) && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
+          {canEdit && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
         </div>
       )}
       {ts === "stale" && needsTrans && (
         <div className="trans-banner" style={{ background: "#fff8e6", borderColor: THEME.gold, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>⚠️ {t.transStale || "This translation may be outdated"}</span>
-          {(recipe.ownerId === currentUser.id || recipe.editPerms?.includes(currentUser.id)) && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
+          {canEdit && <button type="button" onClick={handleRetranslate} title="Re-translate" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", padding: "0 .2rem", lineHeight: 1 }}>🔄</button>}
         </div>
       )}
       {ts === "error" && <div className="trans-banner" style={{ background: "#fff3f0", borderColor: THEME.rust }}>⚠️ {t.transError}</div>}
