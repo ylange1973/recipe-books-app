@@ -11,6 +11,7 @@ import BookCard from "./components/BookCard.jsx";
 import RecipeCard from "./components/RecipeCard.jsx";
 import RecipeDetail from "./components/RecipeDetail.jsx";
 import RecipeForm from "./components/RecipeForm.jsx";
+import { mergeTranslationIngredients } from "./translationIngredients.js";
 import BookForm from "./components/BookForm.jsx";
 
 export default function App() {
@@ -147,9 +148,7 @@ export default function App() {
       const toStore = {
         name: cleanRecipe.name, description: cleanRecipe.description,
         foodType: cleanRecipe.foodType, difficulty: cleanRecipe.difficulty, notes: cleanRecipe.notes,
-        ingredients: (cleanRecipe.ingredients || []).map(i => i.type === "section"
-          ? { id: i.id, type: "section", title: i.title }
-          : { id: i.id, type: "ingredient", name: i.name }),
+        ingredients: mergeTranslationIngredients(cleanRecipe.ingredients, selRecipe?.ingredients),
         steps: (cleanRecipe.steps || []).map(s => ({ id: s.id, text: s.text })),
         stale: false,
       };
@@ -283,7 +282,7 @@ export default function App() {
                   const tr = cache[ck];
                   if (tr?.ingredients) {
                     // Merge translated text fields over original recipe for the form
-                    setEditRecipe({ ...selRecipe, ...tr, _isTranslationEdit: true, _translationLang: lang });
+                    setEditRecipe({ ...selRecipe, ...tr, ingredients: mergeTranslationIngredients(tr.ingredients, selRecipe.ingredients), _isTranslationEdit: true, _translationLang: lang });
                   } else {
                     setEditRecipe(selRecipe);
                   }
